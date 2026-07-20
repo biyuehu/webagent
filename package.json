@@ -1,0 +1,22 @@
+{
+  "name": "project-7a20",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^26.1.1",
+    "vitest": "^4.1.10"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@biomejs/biome": "^2.5.4",
+    "@clack/prompts": "^1.7.0",
+    "cac": "^7.0.0",
+    "clipboardy": "^5.3.1",
+    "fast-glob": "^3.3.3",
+    "picocolors": "^1.1.1"
+  }
+}

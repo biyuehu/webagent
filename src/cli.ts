@@ -107,14 +107,22 @@ cli
   .command('pack [...globs]', '打包指定 Patterns 代码生成 Prompt')
   .option('--stdout', '在终端直接打印结果')
   // .option('--max-size <kb>', '单文件限制(KB)', { default: 500 })
+  .option('--goal <text>', '任务目标')
   .option('--only', '仅含文件内容')
-  .option('--no-tree', '不包含项目目录树')
-  .option('--no-diff', '不包含焦点文件的 Git Diff')
+  .option('--text', '使用纯文本 DSL（非 Markdown）')
+  .option('--no-tree', '不包含项目目录树')  .option('--no-diff', '不包含焦点文件的 Git Diff')
   .action(
     async (
       globs: string[],
-      options: { stdout?: boolean; maxSize?: number; tree?: boolean; diff?: boolean, only?: boolean } = {}
-    ): Promise<void> => {
+      options: {
+        stdout?: boolean
+        maxSize?: number
+        tree?: boolean
+        diff?: boolean
+        only?: boolean
+        text?: boolean
+        goal?: string
+      } = {}    ): Promise<void> => {
       if (!globs || globs.length === 0) {
         console.error(picocolors.red('错误: 请至少指定一个 glob 表达式'))
         process.exit(1)
@@ -126,9 +134,11 @@ cli
         only: options.only,
         files: normalFiles,
         simplifyFiles,
+        goal: options.goal,
         tree: options.tree,
         diff: options.diff,
-        copy: !options.stdout
+        copy: !options.stdout,
+        markdownDsl: !options.text
       })
 
       s.stop('打包完成')

@@ -15,6 +15,7 @@ export function applyDSLBlock(block: DSLBlock): Either<string, undefined | strin
   try {
     switch (block.type) {
       case 'CREATE': {
+        if (fs.existsSync(block.filePath)) return left(`File already exists: ${block.filePath}`)
         ensureDirectoryExists(block.filePath)
         fs.writeFileSync(block.filePath, block.content, 'utf-8')
         return right(undefined)
@@ -46,7 +47,7 @@ export function applyDSLBlock(block: DSLBlock): Either<string, undefined | strin
           return right(`### Directory: \`${block.filePath}\`\n\`\`\`text\n${tree}\n\`\`\``)
         }
         return right(
-          `### File: \`${block.filePath}\`\n\`\`\`${path.extname(block.filePath).slice(1) ?? 'txt'}\n${fs.readFileSync(block.filePath, 'utf-8')}\n\`\`\``
+          `### File: \`${block.filePath}\`\n\`\`\`${path.extname(block.filePath).slice(1) || 'txt'}\n${fs.readFileSync(block.filePath, 'utf-8')}\n\`\`\``
         )
       }
     }

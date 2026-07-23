@@ -13,6 +13,7 @@ export interface PackOptions {
   tree?: boolean
   diff?: boolean
   copy?: boolean
+  markdownDsl?: boolean
 }
 
 function getGitIgnoredPaths(paths: string[], cwd: string = process.cwd()): Set<string> {
@@ -170,20 +171,25 @@ export async function packContext(options: PackOptions): Promise<string> {
   if (!options.only) {
     sections.push(
       `# System Instruction\n` +
-        `你是一个极度严谨的编程助手。如果你有自带沙盒，不要进入，按照我们的约定来。在工作模式下，务必使用以下 DSL 格式，务必确定格式正确：\n` +
-        `- 新建文件使用 ### CREATE: filepath\n\`\`\`\n...\n\`\`\`\n` +
-        `- 局部修改使用 ### REPLACE: filepath\n\`\`\`lang\n<<<<<<< ORIGINAL\n原始内容\n=======\n修改内容\n>>>>>>> UPDATED\n\`\`\`\n` +
-        `- 删除文件使用 ### DELETE: filepath\`\n` +
-        `- 读取文件/目录使用 ### READ: filepath_or_dirpath\`\n` +
-        `- 建议终端命令使用 ### COMMAND\n\`\`\`\ncommand1\ncommand2...\n\`\`\`\n` +
+        `你是一个极度严谨的编程助手。如果你有自带沙盒，不要进入，按照我们的约定来。在工作模式下，务必使用以下 DSL 格式，务必确定格式` +
+        ((options.markdownDsl ?? true)
+          ? `- 新建文件使用 ### CREATE: filepath\n\`\`\`lang\n...\n\`\`\`\n` +
+            `- 修改文件使用 ### REPLACE: filepath\n\`\`\`lang\n<<<<<<< ORIGINAL\n原始内容\n=======\n修改内容\n>>>>>>> UPDATED\n\`\`\`\n` +
+            `- 删除文件使用 ### DELETE: filepath\`\n` +
+            `- 读取文件使用 ### READ: filepath\`\n` +
+            `- 终端命令使用 ### COMMAND\n\`\`\`\ncommand1\ncommand2...\n\`\`\`\n`
+          : `- 新建文件使用 !CREATE: filepath\n...\n!END\n` +
+            `- 修改文件使用 !REPLACE: filepath\n<<<<<<< ORIGINAL\n原始内容\n=======\n修改内容\n>>>>>>> UPDATED\n` +
+            `- 删除文件使用 !DELETE: filepath\n` +
+            `- 读取文件使用 !READ: filepath\n` +
+            `- 终端命令使用 !COMMAND: command（仅支持单行）\n`) +
         `工作模式下应在开头使用圆括号包裹"WORKACTION"（除掉引号），作为标记。并非所有时候都需工作模式，根据意图（如讨论、建议）判别该工作还是放松模式。放松模式为正常的内容响应格式交流。工作中需要什么请READ或要求COMMAND，不要瞎猜。REPLACE时为准确与唯一性请就近多选择几行匹配且不要漏掉字符，但是了应节约上下文除非是大改或有说明，改多处就多个REPLACE而不是整个文件塞到一个REPLACE里。修改AST简化文件时请先读取获取完整内容\n` +
         `修改任何文件前，确保你拥有正确的最新版内容（用户在你操作后可能会人工修改）否则先 READ 目标文件获取最新内容，确保 ORIGINAL 与文件实际内容逐字精确匹配。工作模式下严格按 DSL 格式操作，不得添加非 DSL 内容；读取命令只用于请求，实际内容由系统或用户提供。当用户说“直接”或类似要求时，立即切换为放松模式，不再使用 DSL 或工作标记。每次回复前先确认是否直接回应用户需求，避免绕圈子或自行推测。\n` +
         (fs.existsSync('AGENT.txt') ? `以下为用户PROMPT：\n${fs.readFileSync('AGENT.txt', 'utf-8')}` : '')
     )
   }
 
-
-  if (!options.only && options.tree) sections.push(`## 项目文件结构\n\`\`\`text\n${generateTree()}\n\`\`\``)
+  if (!options.only && options.tree) sections.push(`## 项目结构\n\`\`\`text\n${generateTree()}\n\`\`\``)
 
   const simplifySet = new Set(options.simplifyFiles ?? [])
   const allFiles = Array.from(new Set([...(options.files ?? []), ...simplifySet]))
@@ -192,11 +198,11 @@ export async function packContext(options: PackOptions): Promise<string> {
       if (!fs.existsSync(filePath)) return ''
       const rawContent = fs.readFileSync(filePath, 'utf-8')
       const shouldSimplify = simplifySet.has(filePath)
-      return `### File: \`${shouldSimplify ? `${filePath} (AST Simplified)` : filePath}\`\n\`\`\`${path.extname(filePath).slice(1) ?? 'ts'}\n${shouldSimplify ? extractSkeleton(rawContent, filePath) : rawContent}\n\`\`\``
+      return `### \`${shouldSimplify ? `${filePath} (AST简化)` : filePath}\`\n\`\`\`${path.extname(filePath).slice(1) ?? 'ts'}\n${shouldSimplify ? extractSkeleton(rawContent, filePath) : rawContent}\n\`\`\``
     })
     .filter(Boolean)
     .join('\n\n')
-  if (fileBlocks) sections.push(`## 焦点文件上下文\n${fileBlocks}`)
+  if (fileBlocks) sections.push(`## 焦点文件\n${fileBlocks}`)
 
   // if (options.diff && allFiles.length > 0) {
   //   const diffText = getGitDiffForFiles(allFiles)

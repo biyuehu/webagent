@@ -41,7 +41,47 @@ function findCodeBlock(children: Node[], start: number, end: number): Code | nul
   return null
 }
 
-export function parseDSL(input: string): ParseResult {
+export function parseDSL(input: string, markdown: boolean = true): ParseResult {
+  if (!markdown) {
+    const blocks: DSLBlock[] = []
+    const lines = input.split('\n')
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]!.trim()
+
+      if (line.startsWith('!READ:')) blocks.push({ type: 'READ', filePath: cleanPath(line.slice('!READ:'.length)) })
+      else if (line.startsWith('!DELETE:'))
+        blocks.push({ type: 'DELETE', filePath: cleanPath(line.slice('!DELETE:'.length)) })
+      else if (line.startsWith('!COMMAND:'))
+        blocks.push({ type: 'COMMAND', command: line.slice('!COMMAND:'.length).trim() })
+      else if (line.startsWith('!CREATE:')) {
+        const filePath = cleanPath(line.slice('!CREATE:'.length))
+        const content: string[] = []
+
+        while (++i < lines.length && lines[i]!.trim() !== '!END') content.push(lines[i]!)
+
+        blocks.push({ type: 'CREATE', filePath, content: content.join('\n') })
+      } else if (line.startsWith('!REPLACE:')) {
+        const filePath = cleanPath(line.slice('!REPLACE:'.length))
+        const original: string[] = []
+        const updated: string[] = []
+
+        while (++i < lines.length && lines[i] !== '<<<<<<< ORIGINAL');
+        while (++i < lines.length && lines[i] !== '=======') original.push(lines[i]!)
+        while (++i < lines.length && lines[i] !== '>>>>>>> UPDATED') updated.push(lines[i]!)
+
+        blocks.push({
+          type: 'REPLACE',
+          filePath,
+          original: original.join('\n').trimEnd(),
+          updated: updated.join('\n').trimEnd()
+        })
+      }
+    }
+
+    return { blocks, rawText: input, hasWork: blocks.length > 0 }
+  }
+
   const children = (remark().parse(input) as Root).children
   const blocks: DSLBlock[] = []
 

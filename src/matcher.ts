@@ -68,7 +68,21 @@ export function findMatchLocation(source: string, original: string, fuzzyThresho
     }
   }
 
-  const sourceLines = source.split(/\r?\n/)
+  const lineStarts: number[] = []
+  const sourceLines: string[] = []
+  let start = 0
+
+  while (start <= source.length) {
+    lineStarts.push(start)
+    const end = source.indexOf('\n', start)
+    if (end === -1) {
+      sourceLines.push(source.slice(start))
+      break
+    }
+    sourceLines.push(source.slice(start, source[end - 1] === '\r' ? end - 1 : end))
+    start = end + 1
+  }
+
   const originalLines = original.split(/\r?\n/)
   const normOriginal = normalizeText(original)
 
@@ -76,17 +90,17 @@ export function findMatchLocation(source: string, original: string, fuzzyThresho
     for (let i = 0; i <= sourceLines.length - originalLines.length; i++) {
       const windowSlice = sourceLines.slice(i, i + originalLines.length).join('\n')
       if (normalizeText(windowSlice) === normOriginal) {
-        const startIndex = sourceLines.slice(0, i).join('\n').length + (i > 0 ? 1 : 0)
         return {
           strategy: 'NORMALIZE',
-          startIndex,
-          endIndex: startIndex + windowSlice.length,
+          startIndex: lineStarts[i]!,
+          endIndex: lineStarts[i + originalLines.length] ?? source.length,
           confidence: 0.95
         }
       }
     }
 
     let bestScore = 0
+    let bestCount = 0
     let bestMatch: MatchResult = {
       strategy: 'NONE',
       startIndex: -1,
@@ -98,21 +112,23 @@ export function findMatchLocation(source: string, original: string, fuzzyThresho
       const windowSlice = sourceLines.slice(i, i + originalLines.length).join('\n')
       const similarity = calculateSimilarity(windowSlice, original)
 
-      if (similarity > bestScore && similarity >= fuzzyThreshold) {
+      if (similarity < fuzzyThreshold) continue
+
+      if (similarity > bestScore) {
         bestScore = similarity
-        const startIndex = sourceLines.slice(0, i).join('\n').length + (i > 0 ? 1 : 0)
+        bestCount = 1
         bestMatch = {
           strategy: 'FUZZY',
-          startIndex,
-          endIndex: startIndex + windowSlice.length,
+          startIndex: lineStarts[i]!,
+          endIndex: lineStarts[i + originalLines.length] ?? source.length,
           confidence: similarity
         }
+      } else if (similarity === bestScore) {
+        bestCount++
       }
     }
 
-    if (bestMatch.strategy !== 'NONE') {
-      return bestMatch
-    }
+    if (bestCount === 1) return bestMatch
   }
 
   return {

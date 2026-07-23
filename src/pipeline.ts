@@ -36,7 +36,7 @@ export function extractAffectedFiles(blocks: DSLBlock[]): string[] {
 }
 
 export async function runApplyPipeline(markdownContent: string, options: ApplyOptions = {}): Promise<ApplyResult> {
-  const cwd = options.cwd || process.cwd()
+  const cwd = options.cwd ?? process.cwd()
   const { blocks } = parseDSL(markdownContent)
 
   const result: ApplyResult = {
@@ -48,9 +48,7 @@ export async function runApplyPipeline(markdownContent: string, options: ApplyOp
     outputs: []
   }
 
-  if (blocks.length === 0) {
-    return result
-  }
+  if (blocks.length === 0) return result
 
   const affectedFiles = extractAffectedFiles(blocks)
 

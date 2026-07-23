@@ -19,57 +19,38 @@ export function applyDSLBlock(block: DSLBlock): Either<string, undefined | strin
         fs.writeFileSync(block.filePath, block.content, 'utf-8')
         return right(undefined)
       }
-
       case 'DELETE': {
-        if (fs.existsSync(block.filePath)) {
-          fs.unlinkSync(block.filePath)
-        }
+        if (fs.existsSync(block.filePath)) fs.unlinkSync(block.filePath)
         return right(undefined)
       }
-
       case 'REPLACE': {
-        if (!fs.existsSync(block.filePath)) {
-          return left(`File not found: ${block.filePath}`)
-        }
-
+        if (!fs.existsSync(block.filePath)) return left(`File not found: ${block.filePath}`)
         const source = fs.readFileSync(block.filePath, 'utf-8')
         const match = findMatchLocation(source, block.original)
-
-        if (match.strategy === 'NONE') {
-          return left(`Search block match failed in ${block.filePath}`)
-        }
-
+        if (match.strategy === 'NONE') return left(`Search block match failed in ${block.filePath}`)
         const before = source.slice(0, match.startIndex)
         const after = source.slice(match.endIndex)
         const updatedSource = before + block.updated + after
-
         fs.writeFileSync(block.filePath, updatedSource, 'utf-8')
         return right(undefined)
       }
-
       case 'COMMAND': {
         execSync(block.command, { stdio: 'inherit', encoding: 'utf-8' })
         return right(block.command)
       }
-
       case 'READ': {
-        if (!fs.existsSync(block.filePath)) {
-          return left(`Read target not found: ${block.filePath}`)
-        }
-
+        if (!fs.existsSync(block.filePath)) return left(`Read target not found: ${block.filePath}`)
         const stat = fs.statSync(block.filePath)
         if (stat.isDirectory()) {
           const tree = generateTree(block.filePath)
           return right(`### Directory: \`${block.filePath}\`\n\`\`\`text\n${tree}\n\`\`\``)
         }
-
-        const content = fs.readFileSync(block.filePath, 'utf-8')
-        const ext = path.extname(block.filePath).slice(1) || 'txt'
-        return right(`### File: \`${block.filePath}\`\n\`\`\`${ext}\n${content}\n\`\`\``)
+        return right(
+          `### File: \`${block.filePath}\`\n\`\`\`${path.extname(block.filePath).slice(1) ?? 'txt'}\n${fs.readFileSync(block.filePath, 'utf-8')}\n\`\`\``
+        )
       }
     }
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err)
-    return left(message)
+  } catch (err) {
+    return left(err instanceof Error ? err.message : String(err))
   }
 }

@@ -6,6 +6,7 @@ import glob from 'fast-glob'
 import ts from 'typescript'
 
 export interface PackOptions {
+  only?: boolean
   files: string[]
   simplifyFiles?: string[]
   goal?: string
@@ -17,18 +18,17 @@ export interface PackOptions {
 function getGitIgnoredPaths(paths: string[], cwd: string = process.cwd()): Set<string> {
   if (paths.length === 0) return new Set()
   try {
-    const input = paths.join('\n')
-    const stdout = execSync('git check-ignore --stdin', {
-      cwd,
-      input,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'ignore']
-    })
-    const ignoredList = stdout
-      .split('\n')
-      .map((p) => p.trim())
-      .filter(Boolean)
-    return new Set(ignoredList)
+    return new Set(
+      execSync('git check-ignore --stdin', {
+        cwd,
+        input: paths.join('\n'),
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'ignore']
+      })
+        .split('\n')
+        .map((p) => p.trim())
+        .filter(Boolean)
+    )
   } catch {
     return new Set()
   }
@@ -36,10 +36,7 @@ function getGitIgnoredPaths(paths: string[], cwd: string = process.cwd()): Set<s
 
 function isGitIgnored(targetPath: string, cwd: string = process.cwd()): boolean {
   try {
-    execSync(`git check-ignore "${targetPath}"`, {
-      cwd,
-      stdio: 'ignore'
-    })
+    execSync(`git check-ignore "${targetPath}"`, { cwd, stdio: 'ignore' })
     return true
   } catch {
     return false
@@ -52,30 +49,17 @@ export async function collectPackedFiles(
 ): Promise<{ normalFiles: string[]; simplifyFiles: string[] }> {
   const rawNormalFiles: string[] = []
   const rawSimplifyFiles: string[] = []
-
   for (const rawGlob of globs) {
     const isSimplify = rawGlob.endsWith('#')
-    const pattern = isSimplify ? rawGlob.slice(0, -1) : rawGlob
-
-    const matched = await glob(pattern, {
-      onlyFiles: true,
-      cwd
-    })
-
-    if (isSimplify) {
-      rawSimplifyFiles.push(...matched)
-    } else {
-      rawNormalFiles.push(...matched)
-    }
+    ;(isSimplify ? rawSimplifyFiles : rawNormalFiles).push(
+      ...(await glob(isSimplify ? rawGlob.slice(0, -1) : rawGlob, { onlyFiles: true, cwd }))
+    )
   }
-
-  const allMatched = Array.from(new Set([...rawNormalFiles, ...rawSimplifyFiles]))
-  const ignoredSet = getGitIgnoredPaths(allMatched, cwd)
-
-  const normalFiles = Array.from(new Set(rawNormalFiles)).filter((file) => !ignoredSet.has(file))
-  const simplifyFiles = Array.from(new Set(rawSimplifyFiles)).filter((file) => !ignoredSet.has(file))
-
-  return { normalFiles, simplifyFiles }
+  const ignoredSet = getGitIgnoredPaths(Array.from(new Set([...rawNormalFiles, ...rawSimplifyFiles])), cwd)
+  return {
+    normalFiles: Array.from(new Set(rawNormalFiles)).filter((file) => !ignoredSet.has(file)),
+    simplifyFiles: Array.from(new Set(rawSimplifyFiles)).filter((file) => !ignoredSet.has(file))
+  }
 }
 
 export function generateTree(dirPath: string = '.', depth: number = 3): string {
@@ -90,14 +74,9 @@ export function generateTree(dirPath: string = '.', depth: number = 3): string {
 
     for (const entry of entries) {
       if (entry.name === '.git') continue
-
       const fullPath = path.join(currentDir, entry.name)
       const relativePath = path.relative(absoluteRootDir, fullPath)
-
-      if (isGitIgnored(relativePath, absoluteRootDir)) {
-        continue
-      }
-
+      if (isGitIgnored(relativePath, absoluteRootDir)) continue
       const indent = '  '.repeat(currentDepth - 1)
       if (entry.isDirectory()) {
         lines.push(`${indent}${entry.name}/`)
@@ -179,8 +158,7 @@ export function getGitDiffForFiles(files: string[]): string {
   if (validFiles.length === 0) return ''
 
   try {
-    const command = `git diff HEAD -- ${validFiles.map((f) => `"${f}"`).join(' ')}`
-    return execSync(command, { encoding: 'utf-8' }).trim()
+    return execSync(`git diff HEAD -- ${validFiles.map((f) => `"${f}"`).join(' ')}`, { encoding: 'utf-8' }).trim()
   } catch {
     return ''
   }
@@ -189,47 +167,41 @@ export function getGitDiffForFiles(files: string[]): string {
 export async function packContext(options: PackOptions): Promise<string> {
   const sections: string[] = []
 
-  sections.push(
-    `# System Instruction\n` +
-      `你是一个极度严谨的编程助手。如果你有自带沙盒，不要进入，按照我们的约定来。在工作模式下，务必使用以下 DSL 格式，务必确定格式正确：\n` +
-      `- 局部修改使用 \`### REPLACE: filepath\n<<<<<<< ORIGINAL\n原始内容\n=======\n修改内容\n>>>>>>> UPDATED\`\n` +
-      `- 新建文件使用 \`### CREATE: filepath\` ... \`### END\`\n` +
-      `- 删除文件使用 \`### DELETE: filepath\`\n` +
-      `- 读取文件/目录使用 \`### READ: filepath_or_dirpath\`\n` +
-      `- 建议终端命令使用 \`### COMMAND: command\`\n` +
-      `工作模式下应在开头使用圆括号包裹"WORKACTION"（除掉引号），作为标记。并非所有时候都需工作模式，根据意图（如讨论、建议）判别该工作还是放松模式。放松模式为正常的内容响应格式交流。工作中需要什么请读取或要求，不要瞎猜。REPLACE时为准确与唯一性请就近多选择几行匹配且不要漏掉字符。修改AST简化文件时请先读取获取完整内容\n` +
-      (fs.existsSync('AGENT.txt') ? `以下为用户PROMPT：\n${fs.readFileSync('AGENT.txt', 'utf-8')}` : '')
-  )
+  if (!options.only) {
+    sections.push(
+      `# System Instruction\n` +
+        `你是一个极度严谨的编程助手。如果你有自带沙盒，不要进入，按照我们的约定来。在工作模式下，务必使用以下 DSL 格式，务必确定格式正确：\n` +
+        `- 新建文件使用 ### CREATE: filepath\n\`\`\`\n...\n\`\`\`\n` +
+        `- 局部修改使用 ### REPLACE: filepath\n\`\`\`lang\n<<<<<<< ORIGINAL\n原始内容\n=======\n修改内容\n>>>>>>> UPDATED\n\`\`\`\n` +
+        `- 删除文件使用 ### DELETE: filepath\`\n` +
+        `- 读取文件/目录使用 ### READ: filepath_or_dirpath\`\n` +
+        `- 建议终端命令使用 ### COMMAND\n\`\`\`\ncommand1\ncommand2...\n\`\`\`\n` +
+        `工作模式下应在开头使用圆括号包裹"WORKACTION"（除掉引号），作为标记。并非所有时候都需工作模式，根据意图（如讨论、建议）判别该工作还是放松模式。放松模式为正常的内容响应格式交流。工作中需要什么请READ或要求COMMAND，不要瞎猜。REPLACE时为准确与唯一性请就近多选择几行匹配且不要漏掉字符，但是了应节约上下文除非是大改或有说明，改多处就多个REPLACE而不是整个文件塞到一个REPLACE里。修改AST简化文件时请先读取获取完整内容\n` +
+        `修改任何文件前，确保你拥有正确的最新版内容（用户在你操作后可能会人工修改）否则先 READ 目标文件获取最新内容，确保 ORIGINAL 与文件实际内容逐字精确匹配。工作模式下严格按 DSL 格式操作，不得添加非 DSL 内容；读取命令只用于请求，实际内容由系统或用户提供。当用户说“直接”或类似要求时，立即切换为放松模式，不再使用 DSL 或工作标记。每次回复前先确认是否直接回应用户需求，避免绕圈子或自行推测。\n` +
+        (fs.existsSync('AGENT.txt') ? `以下为用户PROMPT：\n${fs.readFileSync('AGENT.txt', 'utf-8')}` : '')
+    )
+  }
 
-  if (options.tree) sections.push(`## 项目文件结构\n\`\`\`text\n${generateTree()}\n\`\`\``)
 
-  const simplifySet = new Set(options.simplifyFiles || [])
-  const allFiles = Array.from(new Set([...(options.files || []), ...simplifySet]))
+  if (!options.only && options.tree) sections.push(`## 项目文件结构\n\`\`\`text\n${generateTree()}\n\`\`\``)
 
-  if (allFiles.length > 0) {
-    const fileBlocks: string[] = []
-
-    for (const filePath of allFiles) {
-      if (!fs.existsSync(filePath)) continue
+  const simplifySet = new Set(options.simplifyFiles ?? [])
+  const allFiles = Array.from(new Set([...(options.files ?? []), ...simplifySet]))
+  const fileBlocks = allFiles
+    .map((filePath) => {
+      if (!fs.existsSync(filePath)) return ''
       const rawContent = fs.readFileSync(filePath, 'utf-8')
-
       const shouldSimplify = simplifySet.has(filePath)
-      const content = shouldSimplify ? extractSkeleton(rawContent, filePath) : rawContent
+      return `### File: \`${shouldSimplify ? `${filePath} (AST Simplified)` : filePath}\`\n\`\`\`${path.extname(filePath).slice(1) ?? 'ts'}\n${shouldSimplify ? extractSkeleton(rawContent, filePath) : rawContent}\n\`\`\``
+    })
+    .filter(Boolean)
+    .join('\n\n')
+  if (fileBlocks) sections.push(`## 焦点文件上下文\n${fileBlocks}`)
 
-      const ext = path.extname(filePath).slice(1) || 'ts'
-      const label = shouldSimplify ? `${filePath} (AST Simplified)` : filePath
-      fileBlocks.push(`### File: \`${label}\`\n\`\`\`${ext}\n${content}\n\`\`\``)
-    }
-
-    if (fileBlocks.length > 0) {
-      sections.push(`## 焦点文件上下文\n${fileBlocks.join('\n\n')}`)
-    }
-  }
-
-  if (options.diff && allFiles.length > 0) {
-    const diffText = getGitDiffForFiles(allFiles)
-    if (diffText) sections.push(`## 焦点文件未提交变更 (Git Diff)\n\`\`\`diff\n${diffText}\n\`\`\``)
-  }
+  // if (options.diff && allFiles.length > 0) {
+  //   const diffText = getGitDiffForFiles(allFiles)
+  //   if (diffText) sections.push(`## 焦点文件未提交变更 (Git Diff)\n\`\`\`diff\n${diffText}\n\`\`\``)
+  // }
 
   if (options.goal) sections.push(`## 当前任务目标\n${options.goal}`)
   const finalPrompt = sections.join('\n\n---\n\n')

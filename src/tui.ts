@@ -4,7 +4,7 @@ import picocolors from 'picocolors'
 import { runApplyPipeline } from './pipeline'
 import { listUndoPatches, popUndoPatch } from './undo'
 
-export async function startTuiLoop() {
+export async function startTuiLoop(): Promise<void> {
   console.clear()
   intro(picocolors.bgCyan(picocolors.black(' MYCLI 持续交互终端 ')))
   console.log(picocolors.gray('  后台监听剪贴板中... 含有 `WORKACTION` 时自动执行 apply'))
@@ -18,7 +18,7 @@ export async function startTuiLoop() {
       if (currentText !== lastClipboardText) {
         lastClipboardText = currentText
         if (currentText.includes('(WORKACTION)')) {
-          console.log(picocolors.magenta('\n⚡ 剪贴板检测到 WORKACTION，自动触发 apply...'))
+          console.log(picocolors.magenta('\n⚡ 剪贴板检测到 (WORKACTION)，自动触发 apply...'))
           const res = await runApplyPipeline(currentText, { allowAll: false })
           if (res.failedCount > 0) {
             console.log(picocolors.red(`✖ 执行存在 ${res.failedCount} 个错误`))
@@ -27,8 +27,8 @@ export async function startTuiLoop() {
           }
         }
       }
-    } catch {
-      // 忽略剪贴板读写锁异常
+    } catch (err) {
+      console.log(picocolors.red('✖ 剪贴板或应用异常: '), err)
     }
   }, 1000)
 

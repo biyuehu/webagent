@@ -11,7 +11,7 @@ import { listUndoPatches, popUndoPatch } from './undo'
 
 const cli = cac('mycli')
 
-function printApplySummary(res: ApplyResult) {
+function printApplySummary(res: ApplyResult): void {
   if (res.failedCount === 0 && res.skippedCount === 0) {
     console.log(picocolors.green(`✔ 应用成功 (${res.successCount}/${res.totalBlocks} 块)`))
   } else {
@@ -19,18 +19,12 @@ function printApplySummary(res: ApplyResult) {
       picocolors.yellow(`▲ 执行完成: ${res.successCount} 成功, ${res.failedCount} 失败, ${res.skippedCount} 拒绝`)
     )
   }
-
   if (res.errors.length > 0) {
     console.log(picocolors.bold(picocolors.red('\n================ [ 错误日志 ] ================')))
-    res.errors.forEach(({ block, error }, index) => {
+    for (const [index, { block, error }] of res.errors.entries()) {
       console.log(picocolors.red(`[#${index + 1} Error] [${block.type}] -> ${error}`))
-    })
+    }
     console.log(picocolors.bold(picocolors.red('=============================================\n')))
-  }
-
-  if (res.outputs.length > 0) {
-    console.log(picocolors.cyan('\n[ 指令/读取输出 Context ]'))
-    console.log(res.outputs.join('\n---\n'))
   }
 }
 
@@ -39,54 +33,58 @@ cli
   .option('--stdin', '强制从标准输入读取')
   .option('--allow-all', '允许所有高危操作(REMOVE/COMMAND)且无二次提示')
   .option('--no-undo', '禁用 Undo 快照生成')
-  .action(async (file?: string, options: any = {}) => {
-    let markdownContent = ''
+  .action(
+    async (file?: string, options: { stdin?: boolean; allowAll?: boolean; undo?: boolean } = {}): Promise<void> => {
+      let markdownContent = ''
+      if (options.allowAll) {
+        console.log(
+          picocolors.bgYellow(picocolors.black(' 警告: 已开启 --allow-all，高危操作(REMOVE/COMMAND)将被直接静默执行! '))
+        )
+      }
+      if (options.stdin) {
+        markdownContent = fs.readFileSync(0, 'utf-8')
+      } else if (file) {
+        if (!fs.existsSync(file)) {
+          console.error(picocolors.red(`错误: 找不到文件 ${file}`))
+          process.exit(1)
+        }
+        markdownContent = fs.readFileSync(file, 'utf-8')
+      } else {
+        markdownContent = await clipboard.read()
+        if (!markdownContent.trim()) {
+          console.error(picocolors.red('错误: 剪贴板无内容且未提供输入文件'))
+          process.exit(1)
+        }
+      }
+      const s = spinner()
+      s.start('正在处理 DSL 变动...')
 
-    if (options.allowAll) {
-      console.log(
-        picocolors.bgYellow(picocolors.black(' 警告: 已开启 --allow-all，高危操作(REMOVE/COMMAND)将被直接静默执行! '))
-      )
-    }
-
-    if (options.stdin) {
-      markdownContent = fs.readFileSync(0, 'utf-8')
-    } else if (file) {
-      if (!fs.existsSync(file)) {
-        console.error(picocolors.red(`错误: 找不到文件 ${file}`))
+      try {
+        const res = await runApplyPipeline(markdownContent, {
+          allowAll: options.allowAll,
+          noUndo: /* options.undo */ true
+        })
+        printApplySummary(res)
+        if (res.outputs.length > 0) {
+          const combined = res.outputs.join('\n---\n')
+          await clipboard.write(combined)
+          s.stop(picocolors.cyan(`已将 ${res.outputs.length} 个输出项合并复制到剪贴板`))
+        } else {
+          s.stop(picocolors.blue('完成，无输出项'))
+        }
+      } catch (err: unknown) {
+        s.stop('执行异常')
+        console.error(picocolors.red(err instanceof Error ? err.message : String(err)))
         process.exit(1)
       }
-      markdownContent = fs.readFileSync(file, 'utf-8')
-    } else {
-      markdownContent = await clipboard.read()
-      if (!markdownContent.trim()) {
-        console.error(picocolors.red('错误: 剪贴板无内容且未提供输入文件'))
-        process.exit(1)
-      }
     }
-
-    const s = spinner()
-    s.start('正在处理 DSL 变动...')
-
-    try {
-      s.stop('DSL 解析完成')
-      const res = await runApplyPipeline(markdownContent, {
-        allowAll: options.allowAll,
-        noUndo: !options.undo
-      })
-      printApplySummary(res)
-    } catch (err: any) {
-      s.stop('执行异常')
-      console.error(picocolors.red(err.message ?? String(err)))
-      process.exit(1)
-    }
-  })
+  )
 
 cli
   .command('undo', '撤销变更')
   .option('--list', '查看存放在 .git/mycli/undo 中的历史快照')
-  .action(async (options: any = {}) => {
+  .action(async (options: { list?: boolean } = {}): Promise<void> => {
     const undoDir = path.join(process.cwd(), '.git', 'mycli', 'undo')
-
     if (options.list) {
       const patches = listUndoPatches(undoDir)
       if (patches.length === 0) {
@@ -97,7 +95,6 @@ cli
       for (const [index, p] of patches.entries()) console.log(`  ${index + 1}. ${p}`)
       return
     }
-
     const res = popUndoPatch(undoDir)
     if (res._tag === 'Left') {
       console.error(picocolors.red(`✖ 撤销失败: ${res.left}`))
@@ -109,37 +106,41 @@ cli
 cli
   .command('pack [...globs]', '打包指定 Patterns 代码生成 Prompt')
   .option('--stdout', '在终端直接打印结果')
-  .option('--max-size <kb>', '单文件限制(KB)', { default: 500 })
+  // .option('--max-size <kb>', '单文件限制(KB)', { default: 500 })
+  .option('--only', '仅含文件内容')
   .option('--no-tree', '不包含项目目录树')
   .option('--no-diff', '不包含焦点文件的 Git Diff')
-  .action(async (globs: string[], options: any = {}) => {
-    if (!globs || globs.length === 0) {
-      console.error(picocolors.red('错误: 请至少指定一个 glob 表达式'))
-      process.exit(1)
+  .action(
+    async (
+      globs: string[],
+      options: { stdout?: boolean; maxSize?: number; tree?: boolean; diff?: boolean, only?: boolean } = {}
+    ): Promise<void> => {
+      if (!globs || globs.length === 0) {
+        console.error(picocolors.red('错误: 请至少指定一个 glob 表达式'))
+        process.exit(1)
+      }
+      const s = spinner()
+      s.start('搜集与分析匹配文件...')
+      const { normalFiles, simplifyFiles } = await collectPackedFiles(globs)
+      const promptText = await packContext({
+        only: options.only,
+        files: normalFiles,
+        simplifyFiles,
+        tree: options.tree,
+        diff: options.diff,
+        copy: !options.stdout
+      })
+
+      s.stop('打包完成')
+
+      if (options.stdout) {
+        console.log(promptText)
+      } else {
+        await clipboard.write(promptText)
+        console.log(picocolors.green('✔ 已打包上下文并写入剪贴板'))
+      }
     }
-
-    const s = spinner()
-    s.start('搜集与分析匹配文件...')
-
-    const { normalFiles, simplifyFiles } = await collectPackedFiles(globs)
-
-    const promptText = await packContext({
-      files: normalFiles,
-      simplifyFiles,
-      tree: options.tree,
-      diff: options.diff,
-      copy: !options.stdout
-    })
-
-    s.stop('打包完成')
-
-    if (options.stdout) {
-      console.log(promptText)
-    } else {
-      await clipboard.write(promptText)
-      console.log(picocolors.green('✔ 已打包上下文并写入剪贴板'))
-    }
-  })
+  )
 
 cli.command('loop', '进入持续化 TUI 模式').action(startTuiLoop)
 

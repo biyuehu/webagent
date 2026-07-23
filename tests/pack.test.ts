@@ -82,7 +82,7 @@ describe('pack.ts', () => {
 
       expect(prompt).toContain('# System Instruction')
       expect(prompt).toContain('## 当前任务目标\nRefactor feature')
-      expect(prompt).toContain('## 焦点文件上下文')
+      expect(prompt).toContain('## 焦点文件')
     })
   })
 })

@@ -1,10 +1,10 @@
 {
-  "name": "project-7a20",
+  "name": "web-agent",
   "module": "index.ts",
   "type": "module",
-  "private": true,
+  "version": "0.1.0",
   "scripts": {
-    "fix": "bun add remark",
+    "fix": "biome check --write",
     "ap": "bun bin apply",
     "pa": "bun bin pack"
   },

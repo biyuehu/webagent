@@ -91,7 +91,7 @@ if (node.type === 'code') return node as Code
 ---
 
 ```ts
-export type DSLBlock =
+export type DSLDef =
   | {
       type: 'REPLACE',
       filePath: string,
@@ -106,7 +106,7 @@ export type DSLBlock =
 ```
 
 ```ts
-export type DSLBlock =
+export type DSLDef =
   | { type: 'REPLACE'; filePath: string; original: string; updated: string }
   | { type: 'CREATE'; filePath: string; content: string }
 ```
@@ -192,3 +192,32 @@ const cwd = options.cwd ?? process.cwd()
 ```
 
 ---
+
+```ts
+const [targetLength, targetThickness] = Array.isArray(lengthData[targetId])
+  ? lengthData[targetId]
+  : [getNewLength(), getNewThickness()]
+if (!Array.isArray(lengthData[targetId])) {
+  lengthData[targetId] = [targetLength, targetThickness]
+  saveTodayData(lengthData)
+}
+const [senderLength, senderThickness] = Array.isArray(lengthData[senderId])
+  ? lengthData[senderId]
+  : [getNewLength(), getNewThickness()]
+if (!Array.isArray(lengthData[senderId])) {
+  lengthData[senderId] = [senderLength, senderThickness]
+  saveTodayData(lengthData)
+}
+```
+
+```ts
+const [[targetLength, targetThickness], [senderLength, senderThickness]] = [targetId, senderId].map((id) =>
+  Array.isArray(lengthData[id])
+    ? lengthData[id]
+    : ((data: [number, number]) => {
+        lengthData[id] = data
+        saveTodayData(lengthData)
+        return data
+      })([getNewLength(), getNewThickness()])
+)
+```

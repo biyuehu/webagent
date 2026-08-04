@@ -1,17 +1,33 @@
 import type { Code, Heading, Node, Root } from 'mdast'
 import { remark } from 'remark'
 
-export type DSLBlock =
-  | { type: 'REPLACE'; filePath: string; original: string; updated: string }
-  | { type: 'CREATE'; filePath: string; content: string }
-  | { type: 'DELETE'; filePath: string }
-  | { type: 'READ'; filePath: string }
-  | { type: 'COMMAND'; command: string }
+export type DSLOpLabel = 'readonly' | 'mutating' | 'dangerous'
+
+// export type CreateDSLOp<Type extends string, Label extends DSLOpLabel, Data extends object> = {
+//   type: Type
+//   readonly label: Label
+// } & Data
+
+export type DSLOp = { type: string; label: DSLOpLabel } & Record<string, string | number | boolean>
+
+// export type DSLDef =
+//   | CreateDSLOp<'REPLACE', 'mutating', { filePath: string; original: string; updated: string }>
+//   | CreateDSLOp<'CREATE', 'mutating', { filePath: string; content: string }>
+//   | CreateDSLOp<'DELETE', 'dangerous', { filePath: string }>
+//   | CreateDSLOp<'READ', 'readonly', { filePath: string }>
+//   | CreateDSLOp<'COMMAND', 'dangerous', { command: string }>
+
+export const DSLDef = [
+  { type: 'REPLACE', label: 'mutating', filePath: '', original: '', updated: '' }
+] satisfies DSLOp[]
+
+export type DSLDef = (typeof DSLDef)[number]
 
 export interface ParseResult {
-  blocks: DSLBlock[]
+  blocks: DSLDef[]
   rawText: string
   hasWork: boolean
+  warnings: string[]
 }
 
 function cleanPath(pathStr: string): string {
@@ -43,24 +59,25 @@ function findCodeBlock(children: Node[], start: number, end: number): Code | nul
 
 export function parseDSL(input: string, markdown: boolean = true): ParseResult {
   if (!markdown) {
-    const blocks: DSLBlock[] = []
+    const blocks: DSLDef[] = []
     const lines = input.split('\n')
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!.trim()
 
-      if (line.startsWith('!READ:')) blocks.push({ type: 'READ', filePath: cleanPath(line.slice('!READ:'.length)) })
+      if (line.startsWith('!READ:'))
+        blocks.push({ type: 'READ', label: 'readonly', filePath: cleanPath(line.slice('!READ:'.length)) })
       else if (line.startsWith('!DELETE:'))
-        blocks.push({ type: 'DELETE', filePath: cleanPath(line.slice('!DELETE:'.length)) })
+        blocks.push({ type: 'DELETE', label: 'dangerous', filePath: cleanPath(line.slice('!DELETE:'.length)) })
       else if (line.startsWith('!COMMAND:'))
-        blocks.push({ type: 'COMMAND', command: line.slice('!COMMAND:'.length).trim() })
+        blocks.push({ type: 'COMMAND', label: 'dangerous', command: line.slice('!COMMAND:'.length).trim() })
       else if (line.startsWith('!CREATE:')) {
         const filePath = cleanPath(line.slice('!CREATE:'.length))
         const content: string[] = []
 
         while (++i < lines.length && lines[i]!.trim() !== '!END') content.push(lines[i]!)
 
-        blocks.push({ type: 'CREATE', filePath, content: content.join('\n') })
+        blocks.push({ type: 'CREATE', label: 'mutating', filePath, content: content.join('\n') })
       } else if (line.startsWith('!REPLACE:')) {
         const filePath = cleanPath(line.slice('!REPLACE:'.length))
         const original: string[] = []
@@ -72,6 +89,7 @@ export function parseDSL(input: string, markdown: boolean = true): ParseResult {
 
         blocks.push({
           type: 'REPLACE',
+          label: 'mutating',
           filePath,
           original: original.join('\n').trimEnd(),
           updated: updated.join('\n').trimEnd()
@@ -79,11 +97,12 @@ export function parseDSL(input: string, markdown: boolean = true): ParseResult {
       }
     }
 
-    return { blocks, rawText: input, hasWork: blocks.length > 0 }
+    return { blocks, rawText: input, hasWork: blocks.length > 0, warnings: [] }
   }
 
   const children = (remark().parse(input) as Root).children
-  const blocks: DSLBlock[] = []
+  const blocks: DSLDef[] = []
+  const warnings: string[] = []
 
   let i = 0
   while (i < children.length) {
@@ -95,38 +114,42 @@ export function parseDSL(input: string, markdown: boolean = true): ParseResult {
         continue
       }
       const content = getHeadingText(heading)
-      const colonIndex = content.indexOf(':')
-      if (colonIndex === -1) {
-        i++
-        continue
-      }
-      const typePart = content.slice(0, colonIndex).trim().toUpperCase()
-      const pathOrCommand = cleanPath(content.slice(colonIndex + 1).trim())
-
       const nextHeadingIndex = findNextHeadingIndex(children, i + 1)
       const codeNode = findCodeBlock(children, i + 1, nextHeadingIndex)
+
+      const colonIndex = content.indexOf(':')
+      const typePart = (colonIndex === -1 ? content : content.slice(0, colonIndex)).trim().toUpperCase()
+      const pathOrCommand = colonIndex === -1 ? '' : cleanPath(content.slice(colonIndex + 1).trim())
 
       if (typePart === 'REPLACE') {
         if (codeNode) {
           const codeText = codeNode.value
-          const match = codeText.match(/<<<<<<< ORIGINAL\s*\n([\s\S]*?)\n=======\s*\n([\s\S]*?)\n>>>>>>> UPDATED/)
-          if (match) {
+          const match = codeText.match(/<<<<<<< ORIGINAL\s*\n([\s\S]*?)\n=======\s*\n([\s\S]*?)>>>>>>> UPDATED/)
+          if (match)
             blocks.push({
               type: 'REPLACE',
+              label: 'mutating',
               filePath: pathOrCommand,
               original: match[1]!.trimEnd(),
               updated: match[2]!.trimEnd()
             })
-          }
-        }
+          else warnings.push(`REPLACE 块缺少有效冲突标记: ${pathOrCommand}`)
+        } else warnings.push(`REPLACE 块缺少代码块: ${pathOrCommand}`)
       } else if (typePart === 'CREATE') {
-        if (codeNode) blocks.push({ type: 'CREATE', filePath: pathOrCommand, content: codeNode.value })
+        if (codeNode)
+          blocks.push({ type: 'CREATE', label: 'mutating', filePath: pathOrCommand, content: codeNode.value })
+        else warnings.push(`CREATE 块缺少代码块: ${pathOrCommand}`)
       } else if (typePart === 'DELETE') {
-        blocks.push({ type: 'DELETE', filePath: pathOrCommand })
+        blocks.push({ type: 'DELETE', label: 'dangerous', filePath: pathOrCommand })
       } else if (typePart === 'READ') {
-        if (pathOrCommand) blocks.push({ type: 'READ', filePath: pathOrCommand })
+        if (pathOrCommand) blocks.push({ type: 'READ', label: 'readonly', filePath: pathOrCommand })
+        else warnings.push('READ 块缺少文件路径')
       } else if (typePart === 'COMMAND') {
-        if (pathOrCommand) blocks.push({ type: 'COMMAND', command: pathOrCommand })
+        if (pathOrCommand) blocks.push({ type: 'COMMAND', label: 'dangerous', command: pathOrCommand })
+        else if (codeNode) blocks.push({ type: 'COMMAND', label: 'dangerous', command: codeNode.value.trimEnd() })
+        else warnings.push('COMMAND 块缺少命令内容')
+      } else {
+        warnings.push(`未知 DSL 操作类型: ${typePart}`)
       }
 
       i = nextHeadingIndex
@@ -135,5 +158,5 @@ export function parseDSL(input: string, markdown: boolean = true): ParseResult {
     }
   }
 
-  return { blocks, rawText: input, hasWork: blocks.length > 0 }
+  return { blocks, rawText: input, hasWork: blocks.length > 0, warnings }
 }

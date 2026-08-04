@@ -12,8 +12,7 @@ export interface PackOptions {
   goal?: string
   tree?: boolean
   diff?: boolean
-  copy?: boolean
-  markdownDsl?: boolean
+  plain?: boolean
 }
 
 function getGitIgnoredPaths(paths: string[], cwd: string = process.cwd()): Set<string> {
@@ -149,6 +148,7 @@ export function extractSkeleton(code: string, fileName: string = 'file.ts'): str
     }
   }
 
+  // biome-ignore lint/suspicious/noExplicitAny: *
   return printer.printFile(ts.transform(sourceFile, [transformer as any]).transformed[0] as ts.SourceFile)
 }
 
@@ -172,19 +172,21 @@ export async function packContext(options: PackOptions): Promise<string> {
     sections.push(
       `# System Instruction\n` +
         `你是一个极度严谨的编程助手。如果你有自带沙盒，不要进入，按照我们的约定来。在工作模式下，务必使用以下 DSL 格式，务必确定格式` +
-        ((options.markdownDsl ?? true)
+        (!options.plain
           ? `- 新建文件使用 ### CREATE: filepath\n\`\`\`lang\n...\n\`\`\`\n` +
             `- 修改文件使用 ### REPLACE: filepath\n\`\`\`lang\n<<<<<<< ORIGINAL\n原始内容\n=======\n修改内容\n>>>>>>> UPDATED\n\`\`\`\n` +
             `- 删除文件使用 ### DELETE: filepath\`\n` +
-            `- 读取文件使用 ### READ: filepath\`\n` +
+            `- 读取文件或目录使用 ### READ: path\`\n` +
             `- 终端命令使用 ### COMMAND\n\`\`\`\ncommand1\ncommand2...\n\`\`\`\n`
           : `- 新建文件使用 !CREATE: filepath\n...\n!END\n` +
             `- 修改文件使用 !REPLACE: filepath\n<<<<<<< ORIGINAL\n原始内容\n=======\n修改内容\n>>>>>>> UPDATED\n` +
             `- 删除文件使用 !DELETE: filepath\n` +
-            `- 读取文件使用 !READ: filepath\n` +
+            `- 读取文件或目录使用 !READ: path\n` +
             `- 终端命令使用 !COMMAND: command（仅支持单行）\n`) +
-        `工作模式下应在开头使用圆括号包裹"WORKACTION"（除掉引号），作为标记。并非所有时候都需工作模式，根据意图（如讨论、建议）判别该工作还是放松模式。放松模式为正常的内容响应格式交流。工作中需要什么请READ或要求COMMAND，不要瞎猜。REPLACE时为准确与唯一性请就近多选择几行匹配且不要漏掉字符，但是了应节约上下文除非是大改或有说明，改多处就多个REPLACE而不是整个文件塞到一个REPLACE里。修改AST简化文件时请先读取获取完整内容\n` +
-        `修改任何文件前，确保你拥有正确的最新版内容（用户在你操作后可能会人工修改）否则先 READ 目标文件获取最新内容，确保 ORIGINAL 与文件实际内容逐字精确匹配。工作模式下严格按 DSL 格式操作，不得添加非 DSL 内容；读取命令只用于请求，实际内容由系统或用户提供。当用户说“直接”或类似要求时，立即切换为放松模式，不再使用 DSL 或工作标记。每次回复前先确认是否直接回应用户需求，避免绕圈子或自行推测。\n` +
+        `工作模式下应在开头使用圆括号包裹"WORKACTION"（除掉引号），作为标记。并非所有时候都需工作模式，根据意图（如讨论、建议）判别该工作还是放松模式。放松模式为正常的内容响应格式交流。工作中需要什么请READ或COMMAND，不要瞎猜。REPLACE时为准确与唯一性请就近多选择几行匹配且不要漏掉字符，但是了应节约上下文除非是大改或有说明。修改AST简化文件时请先读取获取完整内容\n` +
+        `修改任何文件前，确保你拥有正确的最新版内容（用户在你操作后可能会人工修改）否则先 READ 目标文件获取最新内容，确保 ORIGINAL 与文件实际内容逐字精确匹配。连续修改同一文件时可直接 REPLACE，切换文件或间隔较久未 READ 目标文件时，必须先 READ 获取最新内容再操作。工作模式下严格按 DSL 格式操作，不得添加非 DSL 内容；读取命令只用于请求，实际内容由系统或用户提供。当用户说“直接”或类似要求时，立即切换为放松模式，不再使用 DSL 或工作标记。每次回复前先确认是否直接回应用户需求，避免绕圈子或自行推测。\n` +
+        `严格注意在REPLACE时，不要自作主张在改动面积很小时擅自整个替换，应当分为准确的多个部分进行多次替换。多次 REPLACE 同一文件时，后续的 original 必须基于前一次修改后的文件内容，否则会匹配失败。\n` +
+        `READ 操作必须严格与 REPLACE/CREATE 操作分离，严禁出现在同一次请求中，因为READ操作是在用户再次给出最新文件内容后才算请求成功才能进行下一步写入` +
         (fs.existsSync('AGENT.txt') ? `以下为用户PROMPT：\n${fs.readFileSync('AGENT.txt', 'utf-8')}` : '')
     )
   }
@@ -212,7 +214,7 @@ export async function packContext(options: PackOptions): Promise<string> {
   if (options.goal) sections.push(`## 当前任务目标\n${options.goal}`)
   const finalPrompt = sections.join('\n\n---\n\n')
 
-  if (options.copy !== false) await clipboard.write(finalPrompt)
+  await clipboard.write(finalPrompt)
 
   return finalPrompt
 }

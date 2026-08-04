@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import type { DSLBlock } from './dsl'
+import type { DSLDef } from './dsl'
 import { findMatchLocation } from './matcher'
 import { generateTree } from './pack'
 import { type Either, left, right } from './types'
@@ -11,7 +11,7 @@ function ensureDirectoryExists(filePath: string): void {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
 }
 
-export function applyDSLBlock(block: DSLBlock): Either<string, undefined | string> {
+export function applyDSLDef(block: DSLDef): Either<string, undefined | string> {
   try {
     switch (block.type) {
       case 'CREATE': {
@@ -27,6 +27,9 @@ export function applyDSLBlock(block: DSLBlock): Either<string, undefined | strin
       case 'REPLACE': {
         if (!fs.existsSync(block.filePath)) return left(`File not found: ${block.filePath}`)
         const source = fs.readFileSync(block.filePath, 'utf-8')
+        // const count = source.match(new RegExp(block.original, 'g'))?.length ?? 0
+        // if (count === 0) return left(`Original not found in ${block.filePath}`)
+        // if (count > 1) return left(`Original found multiple times in ${block.filePath}`)
         const match = findMatchLocation(source, block.original)
         if (match.strategy === 'NONE') return left(`Search block match failed in ${block.filePath}`)
         const before = source.slice(0, match.startIndex)

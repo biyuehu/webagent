@@ -116,12 +116,12 @@ export type DSLDef =
 ```ts
 const before = source.slice(0, match.startIndex)
 const after = source.slice(match.endIndex)
-const updatedSource = before + block.updated + after
-fs.writeFileSync(block.filePath, updatedSource, 'utf-8')
+const updatedSource = before + op.updated + after
+fs.writeFileSync(op.filePath, updatedSource, 'utf-8')
 ```
 
 ```ts
-fs.writeFileSync(block.filePath, source.slice(0, match.startIndex) + block.updated + source.slice(match.endIndex), 'utf-8')
+fs.writeFileSync(op.filePath, source.slice(0, match.startIndex) + op.updated + source.slice(match.endIndex), 'utf-8')
 ```
 
 ---
@@ -146,7 +146,7 @@ return {
 
 ```ts
 if (allFiles.length > 0) {
-  const fileBlocks: string[] = []
+  const fileOps: string[] = []
 
   for (const filePath of allFiles) {
     if (!fs.existsSync(filePath)) continue
@@ -157,11 +157,11 @@ if (allFiles.length > 0) {
 
     const ext = path.extname(filePath).slice(1) || 'ts'
     const label = shouldSimplify ? `${filePath} (AST Simplified)` : filePath
-    fileBlocks.push(`### File: \`${label}\`\n\`\`\`${ext}\n${content}\n\`\`\``)
+    fileOps.push(`### File: \`${label}\`\n\`\`\`${ext}\n${content}\n\`\`\``)
   }
 
-  if (fileBlocks.length > 0) {
-    sections.push(`## 焦点文件上下文\n${fileBlocks.join('\n\n')}`)
+  if (fileOps.length > 0) {
+    sections.push(`## 焦点文件上下文\n${fileOps.join('\n\n')}`)
   }
 }
 ```
@@ -169,7 +169,7 @@ if (allFiles.length > 0) {
 - 你他妈不用 `.map` 我都忍了，谁他妈教你同时写 `arr.length > 0` 和 `for (const item of arr)` 的？
 
 ```ts
-const fileBlocks = allFiles
+const fileOps = allFiles
   .map((filePath) => {
     if (!fs.existsSync(filePath)) return ''
     const rawContent = fs.readFileSync(filePath, 'utf-8')
@@ -178,7 +178,7 @@ const fileBlocks = allFiles
   })
   .filter(Boolean)
   .join('\n\n')
-if (fileBlocks) sections.push(`## 焦点文件上下文\n${fileBlocks}`)
+if (fileOps) sections.push(`## 焦点文件上下文\n${fileOps}`)
 ```
 
 ---
@@ -221,3 +221,27 @@ const [[targetLength, targetThickness], [senderLength, senderThickness]] = [targ
       })([getNewLength(), getNewThickness()])
 )
 ```
+
+---
+
+如果说前面是过度愚蠢的解释 那这段完全是跟他妈刚学编程一样的脑瘫毫无灵活性可言了：
+
+```typescript
+
+function isReadonlyOnlyDSL(text: string): boolean {
+  const types = DSLDef.map((d) => d.type)
+  const found = types.some((t) => text.includes(t))
+  if (!found) return false
+  const labelMap: Record<string, DSLOpLabel> = {}
+  for (const d of DSLDef) labelMap[d.type] = d.label
+  return types.filter((t) => text.includes(t)).every((t) => labelMap[t] === 'readonly')
+}
+```
+
+```typescript
+function isReadonlyOnlyDSL(text: string): boolean {
+  return DSLDef.filter(({ type }) => text.includes(type)).every(({ label }) => label === 'readonly')
+}
+```
+
+哪怕有煞笔审美品味低下觉得后者声明式不喜欢 那么前代码也毫无疑问有问题 尤其是愚蠢逻辑问题 首先是又他妈声明式又他妈for const of 而且这他妈types和for完完全全就矛盾的 明明都他妈在一个数组里 结果他妈遍历两遍 一个是蹩脚map 一个是脑瘫地自以为高级构建labelrecord的傻逼行为 最愚蠢则是你他妈最后都filter他妈的那破found有个几把意义 filter自然就解决了found还他妈搁着.some

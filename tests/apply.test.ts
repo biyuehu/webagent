@@ -20,62 +20,66 @@ afterEach(() => {
 })
 
 describe('applyDSLDef', () => {
-  it('should handle CREATE block successfully', () => {
+  it('should handle CREATE op successfully', () => {
     const filePath = path.join(tmpDir, 'nested', 'created.txt')
-    const block: DSLDef = {
+    const op: DSLDef = {
       type: 'CREATE',
+      label: 'mutating',
       filePath,
       content: 'hello world'
     }
 
-    const result = applyDSLDef(block)
+    const result = applyDSLDef(op)
 
     expect(result._tag).toBe('Right')
     expect(fs.existsSync(filePath)).toBe(true)
     expect(fs.readFileSync(filePath, 'utf-8')).toBe('hello world')
   })
 
-  it('should handle DELETE block successfully', () => {
+  it('should handle DELETE op successfully', () => {
     const filePath = path.join(tmpDir, 'to_delete.txt')
     fs.writeFileSync(filePath, 'delete me', 'utf-8')
 
-    const block: DSLDef = {
+    const op: DSLDef = {
       type: 'DELETE',
+      label: 'dangerous',
       filePath
     }
 
-    const result = applyDSLDef(block)
+    const result = applyDSLDef(op)
 
     expect(result._tag).toBe('Right')
     expect(fs.existsSync(filePath)).toBe(false)
   })
 
-  it('should handle REPLACE block successfully', () => {
+  it('should handle REPLACE op successfully', () => {
     const filePath = path.join(tmpDir, 'target.ts')
     fs.writeFileSync(filePath, 'const a = 1;\nconst b = 2;', 'utf-8')
 
-    const block: DSLDef = {
+    const op: DSLDef = {
       type: 'REPLACE',
+      label: 'mutating',
       filePath,
       original: 'const b = 2;',
       updated: 'const b = 42;'
     }
 
-    const result = applyDSLDef(block)
+    const result = applyDSLDef(op)
 
     expect(result._tag).toBe('Right')
     expect(fs.readFileSync(filePath, 'utf-8')).toBe('const a = 1;\nconst b = 42;')
   })
 
   it('should return Left when REPLACE target file does not exist', () => {
-    const block: DSLDef = {
+    const op: DSLDef = {
       type: 'REPLACE',
+      label: 'mutating',
       filePath: path.join(tmpDir, 'non_existent.ts'),
       original: 'foo',
       updated: 'bar'
     }
 
-    const result = applyDSLDef(block)
+    const result = applyDSLDef(op)
 
     expect(result._tag).toBe('Left')
     if (result._tag === 'Left') {
@@ -83,13 +87,14 @@ describe('applyDSLDef', () => {
     }
   })
 
-  it('should handle COMMAND block and return command string on Right', () => {
-    const block: DSLDef = {
+  it('should handle COMMAND op and return command string on Right', () => {
+    const op: DSLDef = {
       type: 'COMMAND',
+      label: 'dangerous',
       command: 'node -v'
     }
 
-    const result = applyDSLDef(block)
+    const result = applyDSLDef(op)
 
     expect(result._tag).toBe('Right')
     if (result._tag === 'Right') {
@@ -97,16 +102,17 @@ describe('applyDSLDef', () => {
     }
   })
 
-  it('should handle READ block for a file and return content on Right', () => {
+  it('should handle READ op for a file and return content on Right', () => {
     const filePath = path.join(tmpDir, 'read_me.ts')
     fs.writeFileSync(filePath, 'export const x = 10;', 'utf-8')
 
-    const block: DSLDef = {
+    const op: DSLDef = {
       type: 'READ',
+      label: 'readonly',
       filePath
     }
 
-    const result = applyDSLDef(block)
+    const result = applyDSLDef(op)
 
     expect(result._tag).toBe('Right')
     if (result._tag === 'Right') {
@@ -115,17 +121,18 @@ describe('applyDSLDef', () => {
     }
   })
 
-  it('should handle READ block for a directory and return tree on Right', () => {
+  it('should handle READ op for a directory and return tree on Right', () => {
     const subDir = path.join(tmpDir, 'subdir')
     fs.mkdirSync(subDir, { recursive: true })
     fs.writeFileSync(path.join(subDir, 'file.txt'), 'content', 'utf-8')
 
-    const block: DSLDef = {
+    const op: DSLDef = {
       type: 'READ',
+      label: 'readonly',
       filePath: subDir
     }
 
-    const result = applyDSLDef(block)
+    const result = applyDSLDef(op)
 
     expect(result._tag).toBe('Right')
     if (result._tag === 'Right') {

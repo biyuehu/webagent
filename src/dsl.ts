@@ -3,28 +3,22 @@ import { remark } from 'remark'
 
 export type DSLOpLabel = 'readonly' | 'mutating' | 'dangerous'
 
-// export type CreateDSLOp<Type extends string, Label extends DSLOpLabel, Data extends object> = {
-//   type: Type
-//   readonly label: Label
-// } & Data
-
 export type DSLOp = { type: string; label: DSLOpLabel } & Record<string, string | number | boolean>
 
-// export type DSLDef =
-//   | CreateDSLOp<'REPLACE', 'mutating', { filePath: string; original: string; updated: string }>
-//   | CreateDSLOp<'CREATE', 'mutating', { filePath: string; content: string }>
-//   | CreateDSLOp<'DELETE', 'dangerous', { filePath: string }>
-//   | CreateDSLOp<'READ', 'readonly', { filePath: string }>
-//   | CreateDSLOp<'COMMAND', 'dangerous', { command: string }>
+const string: string = ''
 
 export const DSLDef = [
-  { type: 'REPLACE', label: 'mutating', filePath: '', original: '', updated: '' }
-] satisfies DSLOp[]
+  { type: 'REPLACE' as const, label: 'mutating', filePath: string, original: string, updated: string },
+  { type: 'CREATE' as const, label: 'mutating', filePath: string, content: string },
+  { type: 'DELETE' as const, label: 'dangerous', filePath: string },
+  { type: 'READ' as const, label: 'readonly', filePath: string },
+  { type: 'COMMAND' as const, label: 'dangerous', command: string }
+] as const satisfies DSLOp[]
 
 export type DSLDef = (typeof DSLDef)[number]
 
 export interface ParseResult {
-  blocks: DSLDef[]
+  ops: DSLDef[]
   rawText: string
   hasWork: boolean
   warnings: string[]
@@ -49,7 +43,7 @@ function findNextHeadingIndex(children: Node[], start: number): number {
   return children.length
 }
 
-function findCodeBlock(children: Node[], start: number, end: number): Code | null {
+function findCodeOp(children: Node[], start: number, end: number): Code | null {
   for (let i = start; i < end; i++) {
     const node = children[i]!
     if (node.type === 'code') return node as Code
@@ -57,37 +51,57 @@ function findCodeBlock(children: Node[], start: number, end: number): Code | nul
   return null
 }
 
-export function parseDSL(input: string, markdown: boolean = true): ParseResult {
-  if (!markdown) {
-    const blocks: DSLDef[] = []
+export function parseDSL(input: string, plain: boolean = false): ParseResult {
+  if (plain) {
+    const ops: DSLDef[] = []
     const lines = input.split('\n')
+
+    const warnings: string[] = []
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]!.trim()
 
-      if (line.startsWith('!READ:'))
-        blocks.push({ type: 'READ', label: 'readonly', filePath: cleanPath(line.slice('!READ:'.length)) })
-      else if (line.startsWith('!DELETE:'))
-        blocks.push({ type: 'DELETE', label: 'dangerous', filePath: cleanPath(line.slice('!DELETE:'.length)) })
-      else if (line.startsWith('!COMMAND:'))
-        blocks.push({ type: 'COMMAND', label: 'dangerous', command: line.slice('!COMMAND:'.length).trim() })
-      else if (line.startsWith('!CREATE:')) {
+      if (line.startsWith('!READ:')) {
+        const filePath = cleanPath(line.slice('!READ:'.length))
+        if (filePath) ops.push({ type: 'READ', label: 'readonly', filePath })
+        else warnings.push('READ 块缺少文件路径')
+      } else if (line.startsWith('!DELETE:')) {
+        const filePath = cleanPath(line.slice('!DELETE:'.length))
+        if (filePath) ops.push({ type: 'DELETE', label: 'dangerous', filePath })
+        else warnings.push('DELETE 块缺少文件路径')
+      } else if (line.startsWith('!COMMAND:')) {
+        const command = line.slice('!COMMAND:'.length).trim()
+        if (command) ops.push({ type: 'COMMAND', label: 'dangerous', command })
+        else warnings.push('COMMAND 块缺少命令内容')
+      } else if (line.startsWith('!CREATE:')) {
         const filePath = cleanPath(line.slice('!CREATE:'.length))
         const content: string[] = []
 
         while (++i < lines.length && lines[i]!.trim() !== '!END') content.push(lines[i]!)
 
-        blocks.push({ type: 'CREATE', label: 'mutating', filePath, content: content.join('\n') })
+        ops.push({ type: 'CREATE', label: 'mutating', filePath, content: content.join('\n') })
       } else if (line.startsWith('!REPLACE:')) {
         const filePath = cleanPath(line.slice('!REPLACE:'.length))
         const original: string[] = []
         const updated: string[] = []
 
-        while (++i < lines.length && lines[i] !== '<<<<<<< ORIGINAL');
-        while (++i < lines.length && lines[i] !== '=======') original.push(lines[i]!)
-        while (++i < lines.length && lines[i] !== '>>>>>>> UPDATED') updated.push(lines[i]!)
+        while (++i < lines.length && lines[i]!.trim() !== '<<<<<<< ORIGINAL');
+        if (i === lines.length) {
+          warnings.push(`REPLACE 块缺少有效冲突标记: ${filePath}`)
+          continue
+        }
+        while (++i < lines.length && lines[i]!.trim() !== '=======') original.push(lines[i]!)
+        if (i === lines.length) {
+          warnings.push(`REPLACE 块缺少有效冲突标记: ${filePath}`)
+          continue
+        }
+        while (++i < lines.length && lines[i]!.trim() !== '>>>>>>> UPDATED') updated.push(lines[i]!)
+        if (i === lines.length) {
+          warnings.push(`REPLACE 块缺少有效冲突标记: ${filePath}`)
+          continue
+        }
 
-        blocks.push({
+        ops.push({
           type: 'REPLACE',
           label: 'mutating',
           filePath,
@@ -97,11 +111,11 @@ export function parseDSL(input: string, markdown: boolean = true): ParseResult {
       }
     }
 
-    return { blocks, rawText: input, hasWork: blocks.length > 0, warnings: [] }
+    return { ops, rawText: input, hasWork: ops.length > 0, warnings }
   }
 
   const children = (remark().parse(input) as Root).children
-  const blocks: DSLDef[] = []
+  const ops: DSLDef[] = []
   const warnings: string[] = []
 
   let i = 0
@@ -115,7 +129,7 @@ export function parseDSL(input: string, markdown: boolean = true): ParseResult {
       }
       const content = getHeadingText(heading)
       const nextHeadingIndex = findNextHeadingIndex(children, i + 1)
-      const codeNode = findCodeBlock(children, i + 1, nextHeadingIndex)
+      const codeNode = findCodeOp(children, i + 1, nextHeadingIndex)
 
       const colonIndex = content.indexOf(':')
       const typePart = (colonIndex === -1 ? content : content.slice(0, colonIndex)).trim().toUpperCase()
@@ -124,9 +138,11 @@ export function parseDSL(input: string, markdown: boolean = true): ParseResult {
       if (typePart === 'REPLACE') {
         if (codeNode) {
           const codeText = codeNode.value
-          const match = codeText.match(/<<<<<<< ORIGINAL\s*\n([\s\S]*?)\n=======\s*\n([\s\S]*?)>>>>>>> UPDATED/)
+          const match = codeText.match(
+            /^<<<<<<< ORIGINAL[ \t]*\r?\n([\s\S]*?)\r?\n^=======[ \t]*\r?\n([\s\S]*?)^>>>>>>> UPDATED[ \t]*$/m
+          )
           if (match)
-            blocks.push({
+            ops.push({
               type: 'REPLACE',
               label: 'mutating',
               filePath: pathOrCommand,
@@ -136,17 +152,16 @@ export function parseDSL(input: string, markdown: boolean = true): ParseResult {
           else warnings.push(`REPLACE 块缺少有效冲突标记: ${pathOrCommand}`)
         } else warnings.push(`REPLACE 块缺少代码块: ${pathOrCommand}`)
       } else if (typePart === 'CREATE') {
-        if (codeNode)
-          blocks.push({ type: 'CREATE', label: 'mutating', filePath: pathOrCommand, content: codeNode.value })
+        if (codeNode) ops.push({ type: 'CREATE', label: 'mutating', filePath: pathOrCommand, content: codeNode.value })
         else warnings.push(`CREATE 块缺少代码块: ${pathOrCommand}`)
       } else if (typePart === 'DELETE') {
-        blocks.push({ type: 'DELETE', label: 'dangerous', filePath: pathOrCommand })
+        ops.push({ type: 'DELETE', label: 'dangerous', filePath: pathOrCommand })
       } else if (typePart === 'READ') {
-        if (pathOrCommand) blocks.push({ type: 'READ', label: 'readonly', filePath: pathOrCommand })
+        if (pathOrCommand) ops.push({ type: 'READ', label: 'readonly', filePath: pathOrCommand })
         else warnings.push('READ 块缺少文件路径')
       } else if (typePart === 'COMMAND') {
-        if (pathOrCommand) blocks.push({ type: 'COMMAND', label: 'dangerous', command: pathOrCommand })
-        else if (codeNode) blocks.push({ type: 'COMMAND', label: 'dangerous', command: codeNode.value.trimEnd() })
+        if (pathOrCommand) ops.push({ type: 'COMMAND', label: 'dangerous', command: pathOrCommand })
+        else if (codeNode) ops.push({ type: 'COMMAND', label: 'dangerous', command: codeNode.value.trimEnd() })
         else warnings.push('COMMAND 块缺少命令内容')
       } else {
         warnings.push(`未知 DSL 操作类型: ${typePart}`)
@@ -158,5 +173,5 @@ export function parseDSL(input: string, markdown: boolean = true): ParseResult {
     }
   }
 
-  return { blocks, rawText: input, hasWork: blocks.length > 0, warnings }
+  return { ops, rawText: input, hasWork: ops.length > 0, warnings }
 }

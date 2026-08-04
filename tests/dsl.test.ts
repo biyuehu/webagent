@@ -4,10 +4,10 @@ import { parseDSL } from '../src/dsl'
 describe('DSL Parser (parseDSL)', () => {
   it('应当识别纯 Relax 模式（不包含任何 DSL 块）', () => {
     const input = '这是一个普通的回答，没有任何代码修改指令。'
-    const result = parseDSL(input, false)
+    const result = parseDSL(input, true)
 
     expect(result.hasWork).toBe(false)
-    expect(result.blocks).toHaveLength(0)
+    expect(result.ops).toHaveLength(0)
   })
 
   it('应当精准解析标准的 Markdown REPLACE 块', () => {
@@ -28,8 +28,8 @@ const b = 200;
     const result = parseDSL(input)
 
     expect(result.hasWork).toBe(true)
-    expect(result.blocks).toHaveLength(1)
-    expect(result.blocks[0]).toEqual({
+    expect(result.ops).toHaveLength(1)
+    expect(result.ops[0]).toEqual({
       type: 'REPLACE',
       label: 'mutating',
       filePath: 'src/auth.ts',
@@ -45,11 +45,11 @@ export const add = (a: number, b: number) => a + b;
 export const sub = (a: number, b: number) => a - b;
 !END
 `
-    const result = parseDSL(input, false)
+    const result = parseDSL(input, true)
 
     expect(result.hasWork).toBe(true)
-    expect(result.blocks).toHaveLength(1)
-    expect(result.blocks[0]).toEqual({
+    expect(result.ops).toHaveLength(1)
+    expect(result.ops[0]).toEqual({
       type: 'CREATE',
       label: 'mutating',
       filePath: 'src/utils/math.ts',
@@ -68,8 +68,8 @@ export const PORT = 3000;
     const result = parseDSL(input)
 
     expect(result.hasWork).toBe(true)
-    expect(result.blocks).toHaveLength(1)
-    expect(result.blocks[0]).toEqual({
+    expect(result.ops).toHaveLength(1)
+    expect(result.ops[0]).toEqual({
       type: 'CREATE',
       label: 'mutating',
       filePath: 'src/config.ts',
@@ -87,8 +87,8 @@ echo "Hello, World!"
     const result = parseDSL(input)
 
     expect(result.hasWork).toBe(true)
-    expect(result.blocks).toHaveLength(1)
-    expect(result.blocks[0]).toEqual({
+    expect(result.ops).toHaveLength(1)
+    expect(result.ops[0]).toEqual({
       type: 'COMMAND',
       label: 'dangerous',
       command: 'echo "Hello, World!"'
@@ -98,16 +98,16 @@ echo "Hello, World!"
     const input = `
 !DELETE: src/legacy/old_auth.ts
 !COMMAND: npm run test src/auth.test.ts`
-    const result = parseDSL(input, false)
+    const result = parseDSL(input, true)
 
     expect(result.hasWork).toBe(true)
-    expect(result.blocks).toHaveLength(2)
-    expect(result.blocks[0]).toEqual({
+    expect(result.ops).toHaveLength(2)
+    expect(result.ops[0]).toEqual({
       type: 'DELETE',
       label: 'dangerous',
       filePath: 'src/legacy/old_auth.ts'
     })
-    expect(result.blocks[1]).toEqual({
+    expect(result.ops[1]).toEqual({
       type: 'COMMAND',
       label: 'dangerous',
       command: 'npm run test src/auth.test.ts'
@@ -132,10 +132,10 @@ console.log('created');
 !DELETE: src/temp.ts
 !COMMAND: npm run build
 `
-    const result = parseDSL(input, false)
+    const result = parseDSL(input, true)
     expect(result.hasWork).toBe(true)
-    expect(result.blocks).toHaveLength(4)
-    expect(result.blocks.map((b) => b.type)).toEqual(['REPLACE', 'CREATE', 'DELETE', 'COMMAND'])
+    expect(result.ops).toHaveLength(4)
+    expect(result.ops.map((b) => b.type)).toEqual(['REPLACE', 'CREATE', 'DELETE', 'COMMAND'])
   })
 
   it('应当容错清洗路径中的 Markdown 样式字符（如 `src/auth.ts`）', () => {
@@ -151,7 +151,7 @@ bar
 `
     const result = parseDSL(input)
 
-    expect((result.blocks[0] as { filePath: string }).filePath).toBe('src/auth.ts')
+    expect((result.ops[0] as { filePath: string }).filePath).toBe('src/auth.ts')
   })
 
   it('应当正确解析 Markdown 模式下 UPDATED 为空的 REPLACE 块', () => {
@@ -172,14 +172,37 @@ struct TempSearchResult {
 \`\`\`
 `
     const result = parseDSL(input)
-    expect(result.blocks).toHaveLength(1)
-    expect(result.blocks[0]).toEqual({
+    expect(result.ops).toHaveLength(1)
+    expect(result.ops[0]).toEqual({
       type: 'REPLACE',
       label: 'mutating',
       filePath: 'src/types.rs',
       original:
         '#[derive(Debug, FromQueryResult)]\nstruct TempSearchResult {\n  pub pid: u32,\n  pub str_id: Option<String>,\n  pub title: String,\n  pub text: String,\n  pub modified: u32,\n}',
       updated: ''
+    })
+  })
+
+  it('应当正确解析 updated 内容中间包含 >>>>>>> UPDATED 字面文本（非独占一行）的 REPLACE 块', () => {
+    const input = `
+### REPLACE: src/parser.ts
+\`\`\`typescript
+<<<<<<< ORIGINAL
+const old = 1
+=======
+const marker = 'stop at >>>>>>> UPDATED here'
+const real = 2
+>>>>>>> UPDATED
+\`\`\`
+`
+    const result = parseDSL(input)
+    expect(result.ops).toHaveLength(1)
+    expect(result.ops[0]).toEqual({
+      type: 'REPLACE',
+      label: 'mutating',
+      filePath: 'src/parser.ts',
+      original: 'const old = 1',
+      updated: "const marker = 'stop at >>>>>>> UPDATED here'\nconst real = 2"
     })
   })
 })

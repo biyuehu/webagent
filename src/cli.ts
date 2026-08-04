@@ -1,11 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { spinner } from '@clack/prompts'
 import { cac } from 'cac'
 import clipboard from 'clipboardy'
 import picocolors from 'picocolors'
 import pkg from '../package.json'
-import { collectPackedFiles, packContext } from './pack'
+import { packContext } from './pack'
 import { runApplyPipeline } from './pipeline'
 import { startTuiLoop } from './tui'
 import { listUndoPatches, popUndoPatch } from './undo'
@@ -26,29 +25,27 @@ cli
       let markdownContent = ''
       if (options.allowAll)
         console.log(
-          picocolors.bgYellow(picocolors.black(' 警告: 已开启 --allow-all，高危操作(REMOVE/COMMAND)将被直接静默执行! '))
+          picocolors.bgYellow(picocolors.black('⚠ 已开启 --allow-all，高危操作(REMOVE/COMMAND)将被直接静默执行! '))
         )
       if (options.stdin) markdownContent = fs.readFileSync(0, 'utf-8')
       else if (file) {
         if (!fs.existsSync(file)) {
-          console.error(picocolors.red(`错误: 找不到文件 ${file}`))
+          console.error(picocolors.red(`✖ 找不到文件 ${file}`))
           return
         }
         markdownContent = fs.readFileSync(file, 'utf-8')
       } else {
         markdownContent = await clipboard.read()
         if (!markdownContent.trim()) {
-          console.error(picocolors.red('错误: 剪贴板无内容且未提供输入文件'))
+          console.error(picocolors.red('✖ 剪贴板无内容且未提供输入文件'))
           return
         }
       }
-      const s = spinner()
-      s.start('正在处理 DSL 变动...')
       try {
         await runApplyPipeline(markdownContent, { allowAll: options.allowAll, plain: options.plain, noUndo: true })
-        s.stop('执行完成')
+        console.log(picocolors.green('✔ 执行完成'))
       } catch (err: unknown) {
-        s.stop('执行异常')
+        console.error('✖ 执行异常')
         console.error(picocolors.red(err instanceof Error ? err.message : String(err)))
       }
     }
@@ -66,23 +63,15 @@ cli
       globs: string[],
       options: { tree?: boolean; diff?: boolean; only?: boolean; plain?: boolean; goal?: string } = {}
     ): Promise<void> => {
-      if (!globs || globs.length === 0) {
-        console.error(picocolors.red('错误: 请至少指定一个 glob 表达式'))
-        return
-      }
-      const s = spinner()
-      s.start('搜集与分析匹配文件...')
-      const { normalFiles, simplifyFiles } = await collectPackedFiles(globs)
       await packContext({
         only: options.only,
-        files: normalFiles,
-        simplifyFiles,
+        globs,
         goal: options.goal,
         tree: options.tree,
         diff: options.diff,
         plain: options.plain
       })
-      s.stop(picocolors.green('✔ 已打包上下文并写入剪贴板'))
+      console.log(picocolors.green('✔ 已打包上下文并写入剪贴板'))
     }
   )
 
@@ -106,7 +95,10 @@ cli
     else console.log(picocolors.green(`✔ 已还原快照: ${res.right}`))
   })
 
-cli.command('loop', '进入持续化 TUI 模式').action(startTuiLoop)
+cli
+  .command('loop', '进入持续化 TUI 模式')
+  .option('--plain', '使用纯文本 DSL（非 Markdown）')
+  .action((options: { plain?: boolean }) => startTuiLoop(options))
 
 cli.command('version', '显示版本信息').action(() => cli.outputVersion())
 

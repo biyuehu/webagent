@@ -2,7 +2,6 @@ import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import type { DSLDef } from './dsl'
-import { findMatchLocation } from './matcher'
 import { generateTree } from './pack'
 import { type Either, left, right } from './types'
 
@@ -11,46 +10,49 @@ function ensureDirectoryExists(filePath: string): void {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
 }
 
-export function applyDSLDef(block: DSLDef): Either<string, undefined | string> {
+export function applyDSLDef(op: DSLDef): Either<string, undefined | string> {
   try {
-    switch (block.type) {
+    switch (op.type) {
       case 'CREATE': {
-        if (fs.existsSync(block.filePath)) return left(`File already exists: ${block.filePath}`)
-        ensureDirectoryExists(block.filePath)
-        fs.writeFileSync(block.filePath, block.content, 'utf-8')
+        if (fs.existsSync(op.filePath)) return left(`File already exists: ${op.filePath}`)
+        ensureDirectoryExists(op.filePath)
+        fs.writeFileSync(op.filePath, op.content, 'utf-8')
         return right(undefined)
       }
       case 'DELETE': {
-        if (fs.existsSync(block.filePath)) fs.unlinkSync(block.filePath)
+        if (fs.existsSync(op.filePath)) fs.unlinkSync(op.filePath)
         return right(undefined)
       }
       case 'REPLACE': {
-        if (!fs.existsSync(block.filePath)) return left(`File not found: ${block.filePath}`)
-        const source = fs.readFileSync(block.filePath, 'utf-8')
-        // const count = source.match(new RegExp(block.original, 'g'))?.length ?? 0
-        // if (count === 0) return left(`Original not found in ${block.filePath}`)
-        // if (count > 1) return left(`Original found multiple times in ${block.filePath}`)
-        const match = findMatchLocation(source, block.original)
-        if (match.strategy === 'NONE') return left(`Search block match failed in ${block.filePath}`)
-        const before = source.slice(0, match.startIndex)
-        const after = source.slice(match.endIndex)
-        const updatedSource = before + block.updated + after
-        fs.writeFileSync(block.filePath, updatedSource, 'utf-8')
+        if (!fs.existsSync(op.filePath)) return left(`File not found: ${op.filePath}`)
+        const source = fs.readFileSync(op.filePath, 'utf-8').replace(/\r\n/g, '\n')
+        const index = source.indexOf(op.original.replace(/\r\n/g, '\n'))
+        if (index === -1) return left(`Original not found in ${op.filePath}`)
+        if (source.indexOf(op.original.replace(/\r\n/g, '\n'), index + 1) !== -1) {
+          return left(`Original found multiple times in ${op.filePath}`)
+        }
+        fs.writeFileSync('cache1', op.original.replace(/\r\n/g, '\n'))
+        fs.writeFileSync('cache2', op.updated.replace(/\r\n/g, '\n'))
+        fs.writeFileSync(
+          op.filePath,
+          source.replace(op.original.replace(/\r\n/g, '\n'), op.updated.replace(/\r\n/g, '\n')),
+          'utf-8'
+        )
         return right(undefined)
       }
       case 'COMMAND': {
-        execSync(block.command, { stdio: 'inherit', encoding: 'utf-8' })
-        return right(block.command)
+        execSync(op.command, { stdio: 'inherit', encoding: 'utf-8' })
+        return right(op.command)
       }
       case 'READ': {
-        if (!fs.existsSync(block.filePath)) return left(`Read target not found: ${block.filePath}`)
-        const stat = fs.statSync(block.filePath)
+        if (!fs.existsSync(op.filePath)) return left(`Read target not found: ${op.filePath}`)
+        const stat = fs.statSync(op.filePath)
         if (stat.isDirectory()) {
-          const tree = generateTree(block.filePath)
-          return right(`### Directory: \`${block.filePath}\`\n\`\`\`text\n${tree}\n\`\`\``)
+          const tree = generateTree(op.filePath)
+          return right(`### Directory: \`${op.filePath}\`\n\`\`\`text\n${tree}\n\`\`\``)
         }
         return right(
-          `### File: \`${block.filePath}\`\n\`\`\`${path.extname(block.filePath).slice(1) || 'txt'}\n${fs.readFileSync(block.filePath, 'utf-8')}\n\`\`\``
+          `### File: \`${op.filePath}\`\n\`\`\`${path.extname(op.filePath).slice(1) || 'txt'}\n${fs.readFileSync(op.filePath, 'utf-8')}\n\`\`\``
         )
       }
     }

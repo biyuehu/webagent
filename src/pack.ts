@@ -7,8 +7,7 @@ import ts from 'typescript'
 
 export interface PackOptions {
   only?: boolean
-  files: string[]
-  simplifyFiles?: string[]
+  globs: string[]
   goal?: string
   tree?: boolean
   diff?: boolean
@@ -165,7 +164,11 @@ export function getGitDiffForFiles(files: string[]): string {
   }
 }
 
-export async function packContext(options: PackOptions): Promise<string> {
+export async function packContext(options: PackOptions): Promise<void> {
+  const { normalFiles, simplifyFiles } = await collectPackedFiles(
+    !options.globs || options.globs.length === 0 ? ['./'] : options.globs,
+    process.cwd()
+  )
   const sections: string[] = []
 
   if (!options.only) {
@@ -193,9 +196,9 @@ export async function packContext(options: PackOptions): Promise<string> {
 
   if (!options.only && options.tree) sections.push(`## 项目结构\n\`\`\`text\n${generateTree()}\n\`\`\``)
 
-  const simplifySet = new Set(options.simplifyFiles ?? [])
-  const allFiles = Array.from(new Set([...(options.files ?? []), ...simplifySet]))
-  const fileBlocks = allFiles
+  const simplifySet = new Set(simplifyFiles)
+  const allFiles = Array.from(new Set([...normalFiles, ...simplifySet]))
+  const fileOps = allFiles
     .map((filePath) => {
       if (!fs.existsSync(filePath)) return ''
       const rawContent = fs.readFileSync(filePath, 'utf-8')
@@ -204,7 +207,7 @@ export async function packContext(options: PackOptions): Promise<string> {
     })
     .filter(Boolean)
     .join('\n\n')
-  if (fileBlocks) sections.push(`## 焦点文件\n${fileBlocks}`)
+  if (fileOps) sections.push(`## 焦点文件\n${fileOps}`)
 
   // if (options.diff && allFiles.length > 0) {
   //   const diffText = getGitDiffForFiles(allFiles)
@@ -215,6 +218,4 @@ export async function packContext(options: PackOptions): Promise<string> {
   const finalPrompt = sections.join('\n\n---\n\n')
 
   await clipboard.write(finalPrompt)
-
-  return finalPrompt
 }

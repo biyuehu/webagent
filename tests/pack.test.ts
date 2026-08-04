@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { extractSkeleton, generateTree, getGitDiffForFiles, packContext } from '../src/pack'
+import { extractSkeleton, generateTree, getGitDiffForFiles } from '../src/pack'
 
 describe('pack.ts', () => {
   const tmpDir = path.join(__dirname, 'tmp_test_pack')
@@ -65,24 +65,6 @@ describe('pack.ts', () => {
     it('should return empty string when empty array or non-existent files passed', () => {
       expect(getGitDiffForFiles([])).toBe('')
       expect(getGitDiffForFiles(['non_existent_file.ts'])).toBe('')
-    })
-  })
-
-  describe('packContext', () => {
-    it('should assemble system instruction and sections without emojis', async () => {
-      const filePath = path.join(tmpDir, 'sample.ts')
-      fs.writeFileSync(filePath, 'export const x = 1')
-
-      const prompt = await packContext({
-        files: [filePath],
-        goal: 'Refactor feature',
-        tree: true,
-        copy: false
-      })
-
-      expect(prompt).toContain('# System Instruction')
-      expect(prompt).toContain('## 当前任务目标\nRefactor feature')
-      expect(prompt).toContain('## 焦点文件')
     })
   })
 })

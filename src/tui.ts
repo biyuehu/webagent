@@ -22,12 +22,10 @@ export async function startTuiLoop({ plain }: { plain?: boolean } = {}): Promise
       if (currentHash === lastHash) return
       lastHash = currentHash
 
-      const hasWork = currentText.includes('(WORKACTION)')
-      const readonlyOnly = DSLDef.filter(({ type }) => currentText.includes(type)).every(
-        ({ label }) => label === 'readonly'
-      )
-
-      if (hasWork || readonlyOnly) {
+      if (
+        currentText.includes('(WORKACTION)') ||
+        DSLDef.filter(({ type }) => currentText.includes(type)).every(({ label }) => label === 'readonly')
+      ) {
         await runApplyPipeline(currentText, { allowAll: false, plain }, () => {})
         process.stdout.write('√')
         setTimeout(() => {

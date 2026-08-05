@@ -26,18 +26,11 @@ export function applyDSLDef(op: DSLDef): Either<string, undefined | string> {
       case 'REPLACE': {
         if (!fs.existsSync(op.filePath)) return left(`File not found: ${op.filePath}`)
         const source = fs.readFileSync(op.filePath, 'utf-8').replace(/\r\n/g, '\n')
-        const index = source.indexOf(op.original.replace(/\r\n/g, '\n'))
+        const original = op.original.replace(/\r\n/g, '\n')
+        const index = source.indexOf(original)
         if (index === -1) return left(`Original not found in ${op.filePath}`)
-        if (source.indexOf(op.original.replace(/\r\n/g, '\n'), index + 1) !== -1) {
-          return left(`Original found multiple times in ${op.filePath}`)
-        }
-        fs.writeFileSync('cache1', op.original.replace(/\r\n/g, '\n'))
-        fs.writeFileSync('cache2', op.updated.replace(/\r\n/g, '\n'))
-        fs.writeFileSync(
-          op.filePath,
-          source.replace(op.original.replace(/\r\n/g, '\n'), op.updated.replace(/\r\n/g, '\n')),
-          'utf-8'
-        )
+        if (source.indexOf(original, index + 1) !== -1) return left(`Original found multiple times in ${op.filePath}`)
+        fs.writeFileSync(op.filePath, source.replace(original, op.updated.replace(/\r\n/g, '\n')), 'utf-8')
         return right(undefined)
       }
       case 'COMMAND': {

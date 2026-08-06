@@ -2,7 +2,7 @@ import { confirm, isCancel } from '@clack/prompts'
 import clipboard from 'clipboardy'
 import picocolors from 'picocolors'
 import { applyDSLDef } from './apply'
-import { type DSLDef, parseDSL } from './dsl'
+import { DSLDef, parseDSL } from './dsl'
 
 export interface ApplyOptions {
   allowAll?: boolean
@@ -13,7 +13,7 @@ export interface ApplyOptions {
 function describeOp(op: DSLDef): string {
   switch (op.type) {
     case 'CREATE':
-      return `CREATE ${op.filePath}`
+      return `CREATE ${op.filePath}${op.content === '' ? ' (dir)' : ''}`
     case 'DELETE':
       return `DELETE ${op.filePath}`
     case 'REPLACE':
@@ -22,7 +22,44 @@ function describeOp(op: DSLDef): string {
       return `COMMAND ${op.command}`
     case 'READ':
       return `READ ${op.filePath}`
+    case 'EXISTS':
+      return `EXISTS ${op.filePath}`
+    case 'MOVE':
+      return `MOVE ${op.from} -> ${op.to}`
+    case 'COPY':
+      return `COPY ${op.from} -> ${op.to}`
+    case 'WRITE':
+      return `WRITE ${op.filePath}`
+    case 'APPEND':
+      return `APPEND ${op.filePath}`
+    case 'PREPEND':
+      return `PREPEND ${op.filePath}`
   }
+}
+
+function getFilePath(op: DSLDef): string | undefined {
+  switch (op.type) {
+    case 'CREATE':
+    case 'DELETE':
+    case 'REPLACE':
+    case 'READ':
+    case 'EXISTS':
+    case 'WRITE':
+    case 'APPEND':
+    case 'PREPEND':
+      return op.filePath
+    case 'MOVE':
+    case 'COPY':
+      return op.from
+    default:
+      return undefined
+  }
+}
+
+function isWriteOperation(op: DSLDef): boolean {
+  return DSLDef.filter(({ label }) => label === 'mutating')
+    .map(({ type }) => type)
+    .includes(op.type)
 }
 
 export async function runApplyPipeline(
@@ -35,24 +72,20 @@ export async function runApplyPipeline(
 
   if (ops.length === 0) return
 
-  // const affectedFiles = ops
-  //   .filter((op) => (op.label === 'mutating' || op.label === 'dangerous') && 'filePath' in op)
-  //   .map(({ filePath }) => filePath)
-
-  // if (!options.noUndo && affectedFiles.length > 0) {
-  //   const undoDir = path.join('.git', 'romi', 'undo')
-  //   createUndoPatch(affectedFiles, undoDir)
-  // }
-
   const successOps = new Map<string, Map<string, number>>()
   const clipboardParts: string[] = []
 
   const readFiles = new Set<string>()
   for (const [index, op] of ops.entries()) {
-    if (op.type === 'READ') readFiles.add(op.filePath)
-    else if ((op.type === 'CREATE' || op.type === 'REPLACE') && readFiles.has(op.filePath)) {
-      log(picocolors.red(`✖ [#${index + 1}] ${op.type} ${op.filePath}：该文件先被 READ 后出现写操作，跳过全部`))
-      return
+    if (op.type === 'READ' || op.type === 'EXISTS') {
+      const path = getFilePath(op)
+      if (path) readFiles.add(path)
+    } else if (isWriteOperation(op)) {
+      const path = getFilePath(op)
+      if (path && readFiles.has(path)) {
+        log(picocolors.red(`✖ [#${index + 1}] ${op.type} ${path}：该文件先被 READ/EXISTS 后出现写操作，跳过全部`))
+        return
+      }
     }
   }
 
@@ -62,12 +95,11 @@ export async function runApplyPipeline(
   }
 
   for (const [index, op] of ops.entries()) {
-    const tag = `[#${index + 1}]` /*  ${describeOp(op)} */
+    const tag = `[#${index + 1}]`
 
     if (!options.allowAll && op.label === 'dangerous') {
-      const targetDesc = op.type === 'DELETE' ? op.filePath : op.command
       const confirmed = await confirm({
-        message: `确认执行高危操作 [${op.type}] ${targetDesc}?`,
+        message: `确认执行高危操作 [${op.type}] ${op.type === 'COMMAND' ? op.command : op.filePath}?`,
         initialValue: true
       })
 
@@ -87,7 +119,7 @@ export async function runApplyPipeline(
       clipboardParts.push(`✖ ${tag} ${execRes.left}`)
     } else {
       result.successCount++
-      const key = op.type === 'COMMAND' ? 'COMMAND' : op.filePath
+      const key = op.type === 'COMMAND' ? 'COMMAND' : (getFilePath(op) ?? op.type)
       const typeLabel = op.type
       if (!successOps.has(key)) successOps.set(key, new Map())
       successOps.get(key)!.set(typeLabel, (successOps.get(key)!.get(typeLabel) ?? 0) + 1)

@@ -1,0 +1,35 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.ts"
+      - "package.json"
+      - "tsconfig.json"
+  pull_request:
+    branches: [main]
+    paths:
+      - "**.ts"
+      - "package.json"
+      - "tsconfig.json"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+
+      - name: Check formatting
+        run: bunx biome check
+
+      - name: Check git diff
+        run: git diff --exit-code
+
+      - name: Test
+        run: bun test
+
+      - name: Build
+        run: bun run build

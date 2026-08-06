@@ -1,28 +1,71 @@
 {
   "name": "web-agent",
-  "module": "index.ts",
-  "type": "module",
+  "description": "DSL-driven web AI agent for file operations, code modification, and command execution",
   "version": "0.1.0",
-  "scripts": {
-    "fix": "biome check --write",
-    "ap": "bun bin apply",
-    "pa": "bun bin pack"
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "module": "./src/index.ts",
+  "bin": {
+    "web-agent": "./dist/cli.js",
+    "wa": "./dist/cli.js",
+    "ro": "./dist/cli.js"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
+    }
+  },
+  "scripts": {
+    "init": "bunx lefthook install",
+    "fix": "biome check --write",
+    "build": "tsc",
+    "prepublishOnly": "bun run build",
+    "version": "bun run changelog && git add CHANGELOG.md",
+    "changelog": "bunx changelogen --output CHANGELOG.md",
+    "release": "bun run changelog && bun run build && bun publish",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "ap": "bun bin apply",
+    "pa": "bun bin pack",
+    "lo": "bun bin loop"
+  },
+  "keywords": [
+    "ai-agent",
+    "dsl",
+    "file-operations",
+    "code-generation",
+    "cli",
+    "bun",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/biyuehu/web-agent.git"
+  },
+  "author": "ArimuraSena <i@arimuraromi.com>",
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^26.1.1",
+    "changelogen": "^0.5.7",
+    "lefthook": "^2.1.10",
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "@biomejs/biome": "^2.5.4",
     "@clack/prompts": "^1.7.0",
     "cac": "^7.0.0",
     "clipboardy": "^5.3.1",
-    "fast-glob": "^3.3.3",
     "picocolors": "^1.1.1",
-    "remark": "^15.0.1"
+    "remark": "^15.0.1",
+    "tinyglobby": "^0.2.17"
   }
 }

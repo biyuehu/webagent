@@ -7,12 +7,14 @@ on:
       - "**.ts"
       - "package.json"
       - "tsconfig.json"
+      - "*.yml"
   pull_request:
     branches: [main]
     paths:
       - "**.ts"
       - "package.json"
       - "tsconfig.json"
+      - "*.yml"
 
 jobs:
   build:
@@ -23,10 +25,7 @@ jobs:
       - run: bun install
 
       - name: Check formatting
-        run: bun fix
-
-      - name: Check git diff
-        run: git diff --exit-code
+        run: bun fix && git diff --exit-code
 
       - name: Test
         run: bun test

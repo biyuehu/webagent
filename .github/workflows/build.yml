@@ -5,16 +5,14 @@ on:
     branches: [main]
     paths:
       - "**.ts"
-      - "package.json"
-      - "tsconfig.json"
+      - "*.json"
       - "*.yml"
   pull_request:
     branches: [main]
     paths:
       - "**.ts"
-      - "package.json"
-      - "tsconfig.json"
-      - "*.yml"
+      - "**.json"
+      - "**.yml"
 
 jobs:
   build:

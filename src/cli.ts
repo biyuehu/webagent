@@ -9,7 +9,7 @@ import { runApplyPipeline } from './pipeline'
 import { startTuiLoop } from './tui'
 import { listUndoPatches, popUndoPatch } from './undo'
 
-export const cli = cac('web-agent')
+export const cli = cac('webagentx')
 
 cli
   .command('apply [file]', '应用 Markdown DSL 块')

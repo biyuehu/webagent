@@ -1,5 +1,5 @@
 {
-  "name": "web-agent",
+  "name": "webagentx",
   "description": "DSL-driven web AI agent for file operations, code modification, and command execution",
   "version": "1.0.0",
   "author": "ArimuraSena <i@arimuraromi.com>",
@@ -9,7 +9,7 @@
   "types": "./dist/index.d.ts",
   "module": "./src/index.ts",
   "bin": {
-    "web-agent": "./dist/cli.js",
+    "webagentx": "./dist/cli.js",
     "wa": "./dist/cli.js",
     "ro": "./dist/cli.js"
   },
@@ -48,7 +48,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/biyuehu/web-agent.git"
+    "url": "git+https://github.com/biyuehu/webagentx.git"
   },
   "devDependencies": {
     "@types/bun": "latest",

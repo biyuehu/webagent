@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD060 MD033 MD022 -->
 
-# Web Agent [![CI](https://github.com/biyuehu/web-agent/actions/workflows/build.yml/badge.svg)](https://github.com/biyuehu/web-agent/actions/workflows/build.yml) [![npm version](https://img.shields.io/npm/v/web-agent.svg)](https://www.npmjs.com/package/web-agent) [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://opensource.org/licenses/GPL-3.0) [![Bun](https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white)](https://bun.sh)
+# Web Agent [![CI](https://github.com/biyuehu/webagentx/actions/workflows/build.yml/badge.svg)](https://github.com/biyuehu/webagentx/actions/workflows/build.yml) [![npm version](https://img.shields.io/npm/v/webagentx.svg)](https://www.npmjs.com/package/webagentx) [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://opensource.org/licenses/GPL-3.0) [![Bun](https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white)](https://bun.sh)
 
 <div align="center">
   <img src="./images/logo.png" alt="Web Agent Logo" width="200" />
@@ -37,19 +37,19 @@ It bridges the gap between "AI in the browser" and "files on your machine" — s
 ## Installation
 
 ```bash
-bun install -g web-agent
-npm install -g web-agent
-pnpm add -g web-agent
-yarn global add web-agent
+bun install -g webagentx
+npm install -g webagentx
+pnpm add -g webagentx
+yarn global add webagentx
 ```
 
 ### Direct usage (no install)
 
 ```bash
-bunx web-agent
-npx web-agent
-pnpm dlx web-agent
-yarn dlx web-agent
+bunx webagentx
+npx webagentx
+pnpm dlx webagentx
+yarn dlx webagentx
 ```
 
 ## Commands
@@ -58,11 +58,11 @@ After installation, the following commands are available:
 
 | Command | Alias | Description |
 |---------|-------|-------------|
-| `web-agent` | `wa`, `ro` | Main entry point |
+| `webagentx` | `wa`, `ro` | Main entry point |
 
 ```bash
 # All three are equivalent
-web-agent apply
+webagentx apply
 wa apply
 ro apply
 ```
@@ -72,38 +72,38 @@ ro apply
 ### Apply DSL from clipboard
 
 ```bash
-web-agent apply
+webagentx apply
 ```
 
 ### Apply from file
 
 ```bash
-web-agent apply ./instructions.md
+webagentx apply ./instructions.md
 ```
 
 ### Pack context for AI
 
 ```bash
-web-agent pack ./src/**/*.ts --goal "Refactor the auth module"
+webagentx pack ./src/**/*.ts --goal "Refactor the auth module"
 ```
 
 ### Interactive TUI
 
 ```bash
-web-agent loop
+webagentx loop
 ```
 
 ### Undo last change
 
 ```bash
-web-agent undo
+webagentx undo
 ```
 
 ## How It Works
 
-1. **Pack**: `web-agent pack` collects your code context, project structure, and system instructions into a prompt
+1. **Pack**: `webagentx pack` collects your code context, project structure, and system instructions into a prompt
 2. **AI**: Copy the prompt to your browser AI (Claude, ChatGPT, DeepSeek, Gemini, etc.)
-3. **Apply**: The AI responds with DSL operations — copy that response, run `web-agent apply`
+3. **Apply**: The AI responds with DSL operations — copy that response, run `webagentx apply`
 4. **Review**: Confirm dangerous operations (DELETE, COMMAND, WRITE) before execution
 
 The workflow is clipboard-based and works with any AI that can follow structured output formats.

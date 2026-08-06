@@ -48,7 +48,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/biyuehu/webagentx.git"
+    "url": "git+https://github.com/biyuehu/webagent.git"
   },
   "devDependencies": {
     "@types/bun": "latest",

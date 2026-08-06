@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD060 MD033 MD022 -->
 
-# Web Agent [![CI](https://github.com/biyuehu/webagentx/actions/workflows/build.yml/badge.svg)](https://github.com/biyuehu/webagentx/actions/workflows/build.yml) [![npm version](https://img.shields.io/npm/v/webagentx.svg)](https://www.npmjs.com/package/webagentx) [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://opensource.org/licenses/GPL-3.0) [![Bun](https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white)](https://bun.sh)
+# Web Agent [![CI](https://github.com/biyuehu/webagent/actions/workflows/build.yml/badge.svg)](https://github.com/biyuehu/webagent/actions/workflows/build.yml) [![npm version](https://img.shields.io/npm/v/webagentx.svg)](https://www.npmjs.com/package/webagentx) [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://opensource.org/licenses/GPL-3.0) [![Bun](https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white)](https://bun.sh)
 
 <div align="center">
   <img src="./images/logo.png" alt="Web Agent Logo" width="200" />

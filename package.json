@@ -1,7 +1,9 @@
 {
   "name": "web-agent",
   "description": "DSL-driven web AI agent for file operations, code modification, and command execution",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "author": "ArimuraSena <i@arimuraromi.com>",
+  "license": "GPL-3.0-only",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -48,7 +50,6 @@
     "type": "git",
     "url": "git+https://github.com/biyuehu/web-agent.git"
   },
-  "author": "ArimuraSena <i@arimuraromi.com>",
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^26.1.1",

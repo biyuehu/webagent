@@ -23,7 +23,7 @@ jobs:
       - run: bun install
 
       - name: Check formatting
-        run: bunx biome check
+        run: bun fix
 
       - name: Check git diff
         run: git diff --exit-code

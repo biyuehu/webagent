@@ -1,15 +1,10 @@
-<!-- markdownlint-disable MD060 MD033 -->
+<!-- markdownlint-disable MD060 MD033 MD022 -->
 
-# Web Agent
+# Web Agent [![CI](https://github.com/biyuehu/web-agent/actions/workflows/build.yml/badge.svg)](https://github.com/biyuehu/web-agent/actions/workflows/build.yml) [![npm version](https://img.shields.io/npm/v/web-agent.svg)](https://www.npmjs.com/package/web-agent) [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://opensource.org/licenses/GPL-3.0) [![Bun](https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white)](https://bun.sh)
 
 <div align="center">
   <img src="./images/logo.png" alt="Web Agent Logo" width="200" />
 </div>
-
-[![CI](https://github.com/biyuehu/web-agent/actions/workflows/build.yml/badge.svg)](https://github.com/biyuehu/web-agent/actions/workflows/build.yml)
-[![npm version](https://img.shields.io/npm/v/web-agent.svg)](https://www.npmjs.com/package/web-agent)
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://opensource.org/licenses/GPL-3.0)
-[![Bun](https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white)](https://bun.sh)
 
 A lightweight, DSL-driven AI agent for file operations, code modification, and command execution — designed for web and client-side AI assistants.
 

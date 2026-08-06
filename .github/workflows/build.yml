@@ -5,8 +5,8 @@ on:
     branches: [main]
     paths:
       - "**.ts"
-      - "*.json"
-      - "*.yml"
+      - "**.json"
+      - "**.yml"
   pull_request:
     branches: [main]
     paths:

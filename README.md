@@ -52,7 +52,7 @@ pnpm dlx webagentx
 yarn dlx webagentx
 ```
 
-## Commands
+## Usage
 
 After installation, the following commands are available:
 
@@ -66,8 +66,6 @@ webagentx apply
 wa apply
 ro apply
 ```
-
-## Usage
 
 ### Apply DSL from clipboard
 
@@ -97,6 +95,28 @@ webagentx loop
 
 ```bash
 webagentx undo
+```
+
+### AGENT.txt
+
+Place an `AGENT.txt` file in your project root to inject custom instructions into every pack. The file supports inline directives:
+
+- `!PRESET` — Load the default preset from the package
+- `!https://example.com/file.txt` — Fetch and include remote content
+- `!/path/to/file.txt` — Include a local file (absolute or relative to project root)
+
+Directives can be nested. Circular references are detected and ignored.
+
+Example:
+
+```text
+You are a specialized Rust reviewer.
+
+!PRESET
+
+!https://raw.githubusercontent.com/rust-lang/rust/master/README.md
+
+!./docs/internal-rules.md
 ```
 
 ## How It Works

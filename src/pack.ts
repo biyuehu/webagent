@@ -42,6 +42,65 @@ function isGitIgnored(targetPath: string, cwd: string = process.cwd()): boolean 
   }
 }
 
+async function resolveAgentInclude(line: string, visited: Set<string> = new Set()): Promise<string> {
+  const rest = line.slice(1).trim()
+  if (!rest) return ''
+
+  // !PRESET
+  if (rest === 'PRESET') {
+    const presetPath = path.join(__dirname, '../AGENT.txt')
+    if (visited.has(presetPath)) return ''
+    visited.add(presetPath)
+    if (fs.existsSync(presetPath)) {
+      const content = fs.readFileSync(presetPath, 'utf-8')
+      return resolveAgentContent(content, visited)
+    }
+    return ''
+  }
+
+  // URL
+  if (rest.startsWith('http://') || rest.startsWith('https://')) {
+    try {
+      return resolveAgentContent(await fetch(rest).then((res) => res.text()), visited)
+    } catch (err) {
+      throw new Error(`Failed to fetch ${rest}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  // local file
+  const filePath = path.resolve(process.cwd(), rest)
+  if (visited.has(filePath)) return ''
+  visited.add(filePath)
+  if (fs.existsSync(filePath)) {
+    const content = fs.readFileSync(filePath, 'utf-8')
+    return resolveAgentContent(content, visited)
+  }
+  throw new Error(`File not found: ${rest}`)
+}
+
+async function resolveAgentContent(content: string, visited: Set<string> = new Set()): Promise<string> {
+  const result: string[] = []
+
+  for (const line of content.split('\n')) {
+    const trimmed = line.trimStart()
+    if (trimmed.startsWith('!')) {
+      const resolved = await resolveAgentInclude(trimmed, visited)
+      if (resolved) result.push(resolved)
+    } else {
+      result.push(line)
+    }
+  }
+
+  return result.join('\n')
+}
+
+async function getAgentPrompt(): Promise<string> {
+  const agentPath = path.join(process.cwd(), 'AGENT.txt')
+  if (!fs.existsSync(agentPath)) return ''
+  const content = fs.readFileSync(agentPath, 'utf-8')
+  return resolveAgentContent(content)
+}
+
 export async function collectPackedFiles(
   globs: string[],
   cwd: string = process.cwd()
@@ -169,6 +228,7 @@ export async function packContext(options: PackOptions): Promise<void> {
   const sections: string[] = []
 
   if (!options.only) {
+    const agentPrompt = await getAgentPrompt()
     sections.push(
       `# System Instruction\n` +
         `你是一个极度严谨的编程助手。如果你有自带沙盒，不要进入，按照我们的约定来。在工作模式下，务必使用以下 DSL 格式，务必确定格式` +
@@ -201,7 +261,7 @@ export async function packContext(options: PackOptions): Promise<void> {
         `修改任何文件前，确保你拥有正确的最新版内容（用户在你操作后可能会人工修改）否则先 READ 目标文件获取最新内容，确保 ORIGINAL 与文件实际内容逐字精确匹配。连续修改同一文件时可直接 REPLACE，切换文件或间隔较久未 READ 目标文件时，必须先 READ 获取最新内容再操作。工作模式下严格按 DSL 格式操作，不得添加非 DSL 内容；读取命令只用于请求，实际内容由系统或用户提供。当用户说"直接"或类似要求时，立即切换为放松模式，不再使用 DSL 或工作标记。每次回复前先确认是否直接回应用户需求，避免绕圈子或自行推测。\n` +
         `严格注意在REPLACE时，不要自作主张在改动面积很小时擅自整个替换，应当分为准确的多个部分进行多次替换。多次 REPLACE 同一文件时，后续的 original 必须基于前一次修改后的文件内容，否则会匹配失败。需要REPLACE整个文件时可直接使用WRITE\n` +
         `READ/EXISTS 操作必须严格与 REPLACE/CREATE/WRITE/APPEND/PREPEND/MOVE/COPY/DELETE 操作分离，严禁出现在同一次请求中，因为只读操作是在用户再次给出最新文件内容后才算请求成功才能进行下一步写入。` +
-        (fs.existsSync('AGENT.txt') ? `以下为用户PROMPT：\n${fs.readFileSync('AGENT.txt', 'utf-8')}` : '')
+        (agentPrompt ? `\n\n## 用户额外要求\n${agentPrompt}` : '')
     )
   }
 
@@ -219,11 +279,6 @@ export async function packContext(options: PackOptions): Promise<void> {
     .filter(Boolean)
     .join('\n\n')
   if (fileOps) sections.push(`## 焦点文件\n${fileOps}`)
-
-  // if (options.diff && allFiles.length > 0) {
-  //   const diffText = getGitDiffForFiles(allFiles)
-  //   if (diffText) sections.push(`## 焦点文件未提交变更 (Git Diff)\n\`\`\`diff\n${diffText}\n\`\`\``)
-  // }
 
   if (options.goal) sections.push(`## 当前任务目标\n${options.goal}`)
   const finalPrompt = sections.join('\n\n---\n\n')

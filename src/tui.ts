@@ -19,15 +19,16 @@ export async function startTuiLoop({ plain }: { plain?: boolean } = {}): Promise
     try {
       const currentText = await clipboard.read()
       const currentHash = createHash('sha256').update(currentText).digest('hex')
-      if (currentHash === lastHash) return
+      if (currentHash === lastHash) {
+        return
+      }
       lastHash = currentHash
-
+      const list = DSLDef.filter(({ type }) => currentText.includes(type))
       if (
         currentText.includes('(WORKACTION)') ||
-        DSLDef.filter(({ type }) => currentText.includes(type)).every(({ label }) => label === 'readonly')
+        (list.length > 0 && list.every(({ label }) => label === 'readonly'))
       ) {
-        await runApplyPipeline(currentText, { allowAll: false, plain }, () => {})
-        process.stdout.write('√')
+        process.stdout.write((await runApplyPipeline(currentText, { allowAll: false, plain }, () => {})) ? '√' : '×')
         setTimeout(() => {
           process.stdout.write('\b \b')
         }, 2000)

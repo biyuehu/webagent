@@ -66,11 +66,11 @@ export async function runApplyPipeline(
   markdownContent: string,
   options: ApplyOptions = {},
   log: (msg: string) => void = console.log
-): Promise<void> {
+): Promise<boolean> {
   const { ops, warnings } = parseDSL(markdownContent, options.plain)
   const result = { totalOps: ops.length, successCount: 0, failedCount: 0, skippedCount: 0 }
 
-  if (ops.length === 0) return
+  if (ops.length === 0) return true
 
   const successOps = new Map<string, Map<string, number>>()
   const clipboardParts: string[] = []
@@ -84,7 +84,7 @@ export async function runApplyPipeline(
       const path = getFilePath(op)
       if (path && readFiles.has(path)) {
         log(picocolors.red(`✖ [#${index + 1}] ${op.type} ${path}：该文件先被 READ/EXISTS 后出现写操作，跳过全部`))
-        return
+        return false
       }
     }
   }
@@ -147,4 +147,6 @@ export async function runApplyPipeline(
     await clipboard.write(clipboardParts.join('\n---\n'))
     log(picocolors.green(`已复制 ${clipboardParts.length} 个输出项到剪贴板`))
   }
+
+  return result.failedCount === 0 && result.skippedCount === 0
 }

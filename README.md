@@ -58,38 +58,55 @@ After installation, the following commands are available:
 
 | Command | Alias | Description |
 |---------|-------|-------------|
-| `webagentx` | `wa`, `ro` | Main entry point |
+| `webagentx` | — | Enter interactive TUI mode |
+| `webagentx apply [file]` | `ap` | Apply Markdown DSL blocks |
+| `webagentx pack [...globs]` | `pa` | Pack context for AI |
+| `webagentx undo` | — | Undo last change |
+| `webagentx version` | — | Show version |
 
 ```bash
-# All three are equivalent
+# Equivalent usages
 webagentx apply
-wa apply
-ro apply
+webagentx ap
 ```
 
 ### Apply DSL from clipboard
 
 ```bash
 webagentx apply
+webagentx ap
 ```
 
 ### Apply from file
 
 ```bash
 webagentx apply ./instructions.md
+webagentx ap ./instructions.md
 ```
 
 ### Pack context for AI
 
 ```bash
 webagentx pack ./src/**/*.ts --goal "Refactor the auth module"
+webagentx pa ./src/**/*.ts
 ```
 
 ### Interactive TUI
 
 ```bash
 webagentx loop
+webagentx l
 ```
+
+Inside the TUI:
+
+| Command | Description |
+|---------|-------------|
+| `ap [--allow-all]` | Apply DSL from clipboard |
+| `pa <globs...> [--no-tree] [--plain]` | Pack context to clipboard |
+| `$ <shell>` | Execute a shell command |
+| `help` | Show TUI commands |
+| `exit` | Exit TUI mode |
 
 ### Undo last change
 
@@ -144,7 +161,6 @@ The workflow is clipboard-based and works with any AI that can follow structured
 | Option | Description |
 | -------- | ------------- |
 | `--goal <text>` | Task goal for the AI |
-| `--only` | Include only file contents, skip system instructions |
 | `--plain` | Use plain-text DSL instead of Markdown |
 | `--no-tree` | Exclude project directory tree |
 | `--no-diff` | Exclude Git diff of focus files |

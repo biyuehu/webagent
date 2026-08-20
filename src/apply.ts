@@ -58,8 +58,18 @@ export function applyDSLDef(op: DSLDef): Either<string, undefined | string> {
         return right(undefined)
       }
       case 'COMMAND': {
-        execSync(op.command, { stdio: 'inherit', encoding: 'utf-8' })
-        return right(op.command)
+        try {
+          const stdout = execSync(op.command, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+          return right(stdout === '' ? undefined : stdout)
+        } catch (err) {
+          const stderr =
+            err instanceof Error && 'stderr' in err && typeof err.stderr === 'string' && err.stderr.trim() !== ''
+              ? err.stderr.trim()
+              : err instanceof Error
+                ? err.message
+                : String(err)
+          return left(stderr)
+        }
       }
       case 'READ': {
         if (!fs.existsSync(op.filePath)) return left(`Read target not found: ${op.filePath}`)

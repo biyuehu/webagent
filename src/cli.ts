@@ -12,7 +12,14 @@ import { listUndoPatches, popUndoPatch } from './undo'
 export const cli = cac('webagentx')
 
 cli
+  .command('loop', '进入持续化 TUI 模式')
+  .alias('l')
+  .option('--plain', '使用纯文本 DSL（非 Markdown）')
+  .action((options: { plain?: boolean }) => startTuiLoop(options))
+
+cli
   .command('apply [file]', '应用 Markdown DSL 块')
+  .alias('ap')
   .option('--stdin', '强制从标准输入读取')
   .option('--allow-all', '允许所有高危操作(REMOVE/COMMAND)且无二次提示')
   .option('--no-undo', '禁用 Undo 快照生成')
@@ -53,8 +60,8 @@ cli
 
 cli
   .command('pack [...globs]', '打包指定 Patterns 代码生成 Prompt')
+  .alias('pa')
   .option('--goal <text>', '任务目标')
-  .option('--only', '仅含文件内容')
   .option('--plain', '使用纯文本 DSL（非 Markdown）')
   .option('--no-tree', '不包含项目目录树')
   .option('--no-diff', '不包含焦点文件的 Git Diff')
@@ -64,7 +71,6 @@ cli
       options: { tree?: boolean; diff?: boolean; only?: boolean; plain?: boolean; goal?: string } = {}
     ): Promise<void> => {
       await packContext({
-        only: options.only,
         globs,
         goal: options.goal,
         tree: options.tree,
@@ -95,14 +101,8 @@ cli
     else console.log(picocolors.green(`✔ 已还原快照: ${res.right}`))
   })
 
-cli
-  .command('loop', '进入持续化 TUI 模式')
-  .option('--plain', '使用纯文本 DSL（非 Markdown）')
-  .action((options: { plain?: boolean }) => startTuiLoop(options))
-
 cli.command('version', '显示版本信息').action(() => cli.outputVersion())
 
-cli.help()
 cli.version(pkg.version)
 cli.parse()
 if (!cli.matchedCommand) cli.outputHelp()

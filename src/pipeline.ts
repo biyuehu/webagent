@@ -116,14 +116,17 @@ export async function runApplyPipeline(
     if (execRes._tag === 'Left') {
       result.failedCount++
       log(picocolors.red(`✖ ${tag} ${execRes.left}`))
-      clipboardParts.push(`✖ ${tag} ${execRes.left}`)
+      clipboardParts.push(`${tag} ${describeOp(op)}\nstderr:\n${execRes.left}`)
     } else {
       result.successCount++
       const key = op.type === 'COMMAND' ? 'COMMAND' : (getFilePath(op) ?? op.type)
       const typeLabel = op.type
       if (!successOps.has(key)) successOps.set(key, new Map())
       successOps.get(key)!.set(typeLabel, (successOps.get(key)!.get(typeLabel) ?? 0) + 1)
-      if (typeof execRes.right === 'string' && execRes.right.trim() !== '') clipboardParts.push(execRes.right)
+      if (typeof execRes.right === 'string' && execRes.right.trim() !== '') {
+        if (op.type !== 'READ' && op.type !== 'EXISTS') log(execRes.right)
+        clipboardParts.push(`${tag} ${describeOp(op)}\nstdout:\n${execRes.right}`)
+      }
     }
   }
 

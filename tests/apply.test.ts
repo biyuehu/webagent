@@ -111,10 +111,10 @@ describe('applyDSLDef', () => {
   })
 
   describe('COMMAND', () => {
-    it('should execute command and return command string', () => {
+    it('should execute command and return stdout', () => {
       const result = applyDSLDef(op.command('node -v'))
       expect(result._tag).toBe('Right')
-      if (result._tag === 'Right') expect(result.right).toBe('node -v')
+      if (result._tag === 'Right') expect(typeof result.right).toBe('string')
     })
   })
 

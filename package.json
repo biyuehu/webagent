@@ -61,7 +61,7 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
-    "@biomejs/biome": "^2.5.4",
+    "@biomejs/biome": "^2.4.13",
     "@clack/prompts": "^1.7.0",
     "cac": "^7.0.0",
     "clipboardy": "^5.3.1",

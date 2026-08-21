@@ -117,7 +117,7 @@ export async function runApplyPipeline(
       result.failedCount++
       log(picocolors.red(`✖ ${tag} ${execRes.left}`))
       if (op.type === 'COMMAND') clipboardParts.push(`${tag} ${describeOp(op)} stderr:\n${execRes.left}`)
-      else clipboardParts.push(execRes.left)
+      else clipboardParts.push(`${tag}  ${execRes.left}`)
     } else {
       result.successCount++
       const key = op.type === 'COMMAND' ? 'COMMAND' : (getFilePath(op) ?? op.type)
@@ -127,7 +127,7 @@ export async function runApplyPipeline(
       if (typeof execRes.right === 'string' && execRes.right.trim() !== '') {
         if (op.type !== 'READ' && op.type !== 'EXISTS') log(execRes.right)
         if (op.type === 'COMMAND') clipboardParts.push(`${tag} ${describeOp(op)} stdout:\n${execRes.right}`)
-        else clipboardParts.push(execRes.right)
+        else clipboardParts.push(`${tag} ${execRes.right}`)
       }
     }
   }

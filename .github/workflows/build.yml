@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
-      - run: rm -f bun.lock && bun install --no-verify
+      - run: bun install --no-verify
 
       - name: Check formatting
         run: bun fix && git diff --exit-code

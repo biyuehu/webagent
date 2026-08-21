@@ -23,7 +23,7 @@ jobs:
       - run: rm -f bun.lock && bun install --no-verify
 
       - name: Check formatting
-        run: rm -f bun.lock && bun fix && git diff --exit-code
+        run: bun fix && git diff --exit-code
 
       - name: Test
         run: bun test

@@ -1,7 +1,7 @@
 {
   "name": "webagentx",
   "description": "DSL-driven web AI agent for file operations, code modification, and command execution",
-  "version": "1.2.3",
+  "version": "1.3.0",
   "author": "ArimuraSena <i@arimuraromi.com>",
   "license": "GPL-3.0-only",
   "type": "module",
@@ -67,6 +67,7 @@
     "clipboardy": "^5.3.1",
     "picocolors": "^1.1.1",
     "remark": "^15.0.1",
+    "staron": "^1.2.0",
     "tinyglobby": "^0.2.17"
   }
 }

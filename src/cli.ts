@@ -3,6 +3,7 @@ import path from 'node:path'
 import { cac } from 'cac'
 import clipboard from 'clipboardy'
 import picocolors from 'picocolors'
+import { Block, gate } from 'staron'
 import pkg from '../package.json'
 import { packContext } from './pack'
 import { runApplyPipeline } from './pipeline'
@@ -10,6 +11,13 @@ import { startTuiLoop } from './tui'
 import { listUndoPatches, popUndoPatch } from './undo'
 
 export const cli = cac('webagentx')
+
+await gate({
+  clientId: 'Ov23liCJaZwQGcVvHs9X',
+  owner: 'biyuehu',
+  repo: 'webagent',
+  onFail: Block('Please star biyuehu/webagent on GitHub to use this tool.')
+})
 
 cli
   .command('loop', '进入持续化 TUI 模式')

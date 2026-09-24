@@ -156,8 +156,8 @@ describe('applyDSLDef', () => {
       const result = applyDSLDef(op.exists(filePath))
       expect(result._tag).toBe('Right')
       if (result._tag === 'Right') {
-        expect(result.right).toContain('✅ 存在')
-        expect(result.right).toContain('文件')
+        expect(result.right).toContain('Exists')
+        expect(result.right).toContain('File')
       }
     })
 
@@ -167,15 +167,15 @@ describe('applyDSLDef', () => {
       const result = applyDSLDef(op.exists(dirPath))
       expect(result._tag).toBe('Right')
       if (result._tag === 'Right') {
-        expect(result.right).toContain('✅ 存在')
-        expect(result.right).toContain('目录')
+        expect(result.right).toContain('Exists')
+        expect(result.right).toContain('Directory')
       }
     })
 
     it('should return Right with "不存在" for non-existent target', () => {
       const result = applyDSLDef(op.exists(path.join(tmpDir, 'nonexistent')))
       expect(result._tag).toBe('Right')
-      if (result._tag === 'Right') expect(result.right).toContain('❌ 不存在')
+      if (result._tag === 'Right') expect(result.right).toContain('Does not exist')
     })
   })
 

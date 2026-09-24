@@ -86,9 +86,9 @@ export function applyDSLDef(op: DSLDef): Either<string, undefined | string> {
         const exists = fs.existsSync(op.filePath)
         if (exists) {
           const stat = fs.statSync(op.filePath)
-          return right(`✅ 存在: ${op.filePath} (${stat.isDirectory() ? '目录' : '文件'})`)
+          return right(`Exists: ${op.filePath} (${stat.isDirectory() ? 'Directory' : 'File'})`)
         }
-        return right(`❌ 不存在: ${op.filePath}`)
+        return right(`Does not exist: ${op.filePath}`)
       }
       case 'MOVE': {
         if (!fs.existsSync(op.from)) return left(`Source not found: ${op.from}`)

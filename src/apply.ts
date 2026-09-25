@@ -59,16 +59,17 @@ export function applyDSLDef(op: DSLDef): Either<string, undefined | string> {
       }
       case 'COMMAND': {
         try {
-          const stdout = execSync(op.command, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+          const stdout = execSync(op.command, {
+            encoding: 'utf-8',
+            stdio: ['ignore', 'pipe', 'pipe'],
+            maxBuffer: 64 * 1024 * 1024
+          }).trim()
           return right(stdout === '' ? undefined : stdout)
         } catch (err) {
-          const stderr =
-            err instanceof Error && 'stderr' in err && typeof err.stderr === 'string' && err.stderr.trim() !== ''
-              ? err.stderr.trim()
-              : err instanceof Error
-                ? err.message
-                : String(err)
-          return left(stderr)
+          if (!(err instanceof Error)) return left(String(err))
+          const stderr = 'stderr' in err && typeof err.stderr === 'string' ? err.stderr.trim() : ''
+          const stdout = 'stdout' in err && typeof err.stdout === 'string' ? err.stdout.trim() : ''
+          return left(stderr || stdout || err.message)
         }
       }
       case 'READ': {

@@ -1,7 +1,7 @@
 {
   "name": "webagentx",
   "description": "DSL-driven web AI agent for file operations, code modification, and command execution",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "author": "ArimuraSena <i@arimuraromi.com>",
   "license": "GPL-3.0-only",
   "type": "module",
@@ -9,9 +9,9 @@
   "types": "./dist/index.d.ts",
   "module": "./src/index.ts",
   "bin": {
-    "webagentx": "./dist/cli.js",
-    "wa": "./dist/cli.js",
-    "ro": "./dist/cli.js"
+    "webagentx": "dist/cli.js",
+    "wa": "dist/cli.js",
+    "ro": "dist/cli.js"
   },
   "exports": {
     ".": {

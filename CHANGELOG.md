@@ -19,6 +19,30 @@
 - Update version ([4e4b2b9](https://github.com/biyuehu/webagent/commit/4e4b2b9))
 - Add files field to package.json ([ddd8884](https://github.com/biyuehu/webagent/commit/ddd8884))
 - Bump version to 1.4.2 and adapt for Node/npm in production ([fabb395](https://github.com/biyuehu/webagent/commit/fabb395))
+- Bump version to 1.4.3 ([c5ee4a7](https://github.com/biyuehu/webagent/commit/c5ee4a7))
+
+### ❤️ Contributors
+
+- Romi ([@biyuehu](http://github.com/biyuehu))
+
+## v1.2.000...main
+
+[compare changes](https://github.com/biyuehu/webagent/compare/v1.2.000...main)
+
+### 🚀 Enhancements
+
+- Add staron lib ([ba80000](https://github.com/biyuehu/webagent/commit/ba80000))
+
+### 🩹 Fixes
+
+- Capture stdout in COMMAND error, bump minor to 1.4.0 ([4c699a8](https://github.com/biyuehu/webagent/commit/4c699a8))
+
+### 🏡 Chore
+
+- Update ([ce621ab](https://github.com/biyuehu/webagent/commit/ce621ab))
+- Update version ([4e4b2b9](https://github.com/biyuehu/webagent/commit/4e4b2b9))
+- Add files field to package.json ([ddd8884](https://github.com/biyuehu/webagent/commit/ddd8884))
+- Bump version to 1.4.2 and adapt for Node/npm in production ([fabb395](https://github.com/biyuehu/webagent/commit/fabb395))
 
 ### ❤️ Contributors
 

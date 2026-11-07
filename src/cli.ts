@@ -1,14 +1,16 @@
+#!/usr/bin/env node
 import fs from 'node:fs'
 import path from 'node:path'
 import { cac } from 'cac'
 import clipboard from 'clipboardy'
 import picocolors from 'picocolors'
 import { Block, gate } from 'staron'
-import pkg from '../package.json'
 import { packContext } from './pack'
 import { runApplyPipeline } from './pipeline'
 import { startTuiLoop } from './tui'
 import { listUndoPatches, popUndoPatch } from './undo'
+
+const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8'))
 
 export const cli = cac('webagentx')
 

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { extractSkeleton, generateTree, getGitDiffForFiles } from '../src/pack'
+import { collectPackedFiles, generateTree, getGitDiffForFiles } from '../src/pack'
 
 describe('pack.ts', () => {
   const tmpDir = path.join(__dirname, 'tmp_test_pack')
@@ -34,30 +34,13 @@ describe('pack.ts', () => {
     })
   })
 
-  describe('extractSkeleton', () => {
-    it('should extract types and functions signatures while dropping function bodies', () => {
-      const code = `
-        export interface User {
-          id: string
-          name: string
-        }
-        export function getUser(id: string): User {
-          const name = "test"
-          return { id, name }
-        }
-        export class Service {
-          async run(): Promise<void> {
-            console.log("doing work")
-          }
-        }
-      `
+  describe('collectPackedFiles', () => {
+    it('should collect matching files', async () => {
+      fs.writeFileSync(path.join(tmpDir, 'a.ts'), 'content a')
+      fs.writeFileSync(path.join(tmpDir, 'b.js'), 'content b')
 
-      const skeleton = extractSkeleton(code, 'test.ts')
-
-      expect(skeleton).toContain('interface User')
-      expect(skeleton).toContain('function getUser(id: string): User;')
-      expect(skeleton).not.toContain('const name = "test"')
-      expect(skeleton).not.toContain('console.log("doing work")')
+      const files = await collectPackedFiles(['*.ts'], tmpDir)
+      expect(files).toEqual(['a.ts'])
     })
   })
 

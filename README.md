@@ -31,7 +31,6 @@ It bridges the gap between "AI in the browser" and "files on your machine" — s
 - **Markdown or plain-text DSL** — Works with any AI output format
 - **Interactive TUI** — Monitor clipboard, trigger operations automatically
 - **Git integration** — Undo support, diff preview, `.gitignore` awareness
-- **AST simplification** — Reduces noise when feeding code to AI
 - **Zero dependencies for the core runtime** — Built with Bun, runs fast
 
 ## Installation

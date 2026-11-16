@@ -1,7 +1,7 @@
 {
   "name": "webagentx",
   "description": "DSL-driven web AI agent for file operations, code modification, and command execution",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "author": "ArimuraSena <i@arimuraromi.com>",
   "license": "GPL-3.0-only",
   "type": "module",
@@ -27,7 +27,7 @@
   "scripts": {
     "init": "bunx lefthook install",
     "fix": "biome check --write",
-    "build": "bun build src/cli.ts --outfile dist/cli.js --target node && bun build src/index.ts --outfile dist/index.js --target node && tsc --emitDeclarationOnly",
+    "build": "bun build src/cli.ts --outfile dist/cli.js --target node && bun build src/index.ts --outfile dist/index.js --target node && tsc --emitDeclarationOnly && bun scripts/fix-dts.ts",
     "prepublishOnly": "bun run build",
     "version": "bun run changelog && git add CHANGELOG.md",
     "changelog": "bunx changelogen --output CHANGELOG.md",

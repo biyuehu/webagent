@@ -1,1 +1,4 @@
-*.test.ts linguist-vendored=false
+src/*.ts linguist-detectable=false
+src/**/*.ts linguist-detectable=false
+tests/*.ts linguist-detectable=false
+tests/**/*.ts linguist-detectable=false

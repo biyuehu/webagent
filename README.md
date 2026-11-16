@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD060 MD033 MD022 -->
 
-# Web Agent [![CI](https://github.com/biyuehu/webagent/actions/workflows/build.yml/badge.svg)](https://github.com/biyuehu/webagent/actions/workflows/build.yml) [![npm version](https://img.shields.io/npm/v/webagentx.svg)](https://www.npmjs.com/package/webagentx) [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://opensource.org/licenses/GPL-3.0) [![Bun](https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white)](https://bun.sh)
+# Web Agent [![CI](https://github.com/biyuehu/webagent/actions/workflows/build.yml/badge.svg)](https://github.com/biyuehu/webagent/actions/workflows/build.yml) [![npm version](https://img.shields.io/npm/v/webagentx.svg)](https://www.npmjs.com/package/webagentx) [![crates.io](https://img.shields.io/crates/v/webagent.svg)](https://crates.io/crates/webagent) [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://opensource.org/licenses/GPL-3.0) [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-339933?logo=node.js&logoColor=white)](https://nodejs.org) [![Bun](https://img.shields.io/badge/Bun-1.x-000000?logo=bun&logoColor=white)](https://bun.sh) [![Rust](https://img.shields.io/badge/Rust-2024-orange?logo=rust&logoColor=white)](https://www.rust-lang.org)
 
 <div align="center">
   <img src="./images/logo.png" alt="Web Agent Logo" width="200" />
@@ -35,6 +35,16 @@ It bridges the gap between "AI in the browser" and "files on your machine" — s
 
 ## Installation
 
+### Rust (Cargo)
+
+```bash
+cargo install webagent
+```
+
+This installs the `webagent` binary along with the shorter aliases `wa` and `ro`.
+
+### Node / Bun
+
 ```bash
 bun install -g webagentx
 npm install -g webagentx
@@ -42,7 +52,7 @@ pnpm add -g webagentx
 yarn global add webagentx
 ```
 
-### Direct usage (no install)
+#### Direct usage (no install)
 
 ```bash
 bunx webagentx
@@ -53,15 +63,15 @@ yarn dlx webagentx
 
 ## Usage
 
-After installation, the following commands are available:
+After installation, the following commands are available (you can use `webagent`, `webagentx`, or the short aliases `wa` / `ro`):
 
 | Command | Alias | Description |
 |---------|-------|-------------|
-| `webagentx` | — | Enter interactive TUI mode |
-| `webagentx apply [file]` | `ap` | Apply Markdown DSL blocks |
-| `webagentx pack [...globs]` | `pa` | Pack context for AI |
-| `webagentx undo` | — | Undo last change |
-| `webagentx version` | — | Show version |
+| `webagent` | `ro`, `wa` | Enter interactive TUI / clipboard monitor mode |
+| `webagent apply [file]` | `ap` | Apply Markdown / Plain DSL blocks |
+| `webagent pack [...globs]` | `pa` | Pack context and project tree for AI |
+| `webagent undo` | — | Undo last change using reverse git patch |
+| `webagent version` | — | Show version |
 
 ```bash
 # Equivalent usages
@@ -190,10 +200,20 @@ bun init  # Installs lefthook hooks
 
 ## Development
 
+### TypeScript (Bun)
+
 ```bash
 bun install
 bun run build
 bun test
+```
+
+### Rust (Cargo)
+
+```bash
+cargo build
+cargo test
+cargo clippy -- -D warnings
 ```
 
 ## License

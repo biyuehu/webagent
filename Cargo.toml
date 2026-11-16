@@ -1,0 +1,50 @@
+[package]
+name = "webagent"
+version = "1.0.0"
+edition = "2024"
+authors = ["ArimuraSena <i@arimuraromi.com>"]
+description = "DSL-driven web AI agent for file operations, code modification, and command execution"
+license = "GPL-3.0-only"
+repository = "https://github.com/biyuehu/webagent"
+keywords = ["ai-agent", "dsl", "file-operations", "code-generation", "cli"]
+exclude = [
+  "*.ts",
+  "*.json",
+  "*.lock",
+  "*.yml",
+  "scripts/",
+  "dist/",
+  "node_modules/",
+  "tests/*.ts",
+  "src/*.ts",
+]
+
+[[bin]]
+name = "webagent"
+path = "src/main.rs"
+
+[[bin]]
+name = "wa"
+path = "src/bin/wa.rs"
+
+[[bin]]
+name = "ro"
+path = "src/bin/ro.rs"
+
+[dependencies]
+staron = "1.0.0"
+clap = { version = "4.5", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+arboard = "3.4"
+colored = "3.0"
+pulldown-cmark = "0.13"
+walkdir = "2.5"
+glob = "0.3"
+inquire = "0.7"
+sha2 = "0.10"
+hex = "0.4"
+thiserror = "2.0"
+reqwest = { version = "0.13.5", features = ["json"] }
+
+[dev-dependencies]
+tempfile = "3"
